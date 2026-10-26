@@ -168,12 +168,12 @@ GUEST_HOOK(T_D3D_ScheduleFlip)
 #endif
 
 #ifdef T_D3D_SpinOnce
-// PES17_FENCE_SLEEP=<us> (off by default): D3D's render thread sleeps that long between its polls
+// PES17_FENCE_SLEEP=<us> (default 20; 0 keeps the title's spin): D3D's render thread sleeps that long between its polls
 // of the GPU instead of spinning, giving its core back to the command processor it waits for. On the
 // POCO X7 Pro, which runs both on the same three cores, 20 took the demo match from 42-44 FPS to 52.
 GUEST_HOOK(T_D3D_SpinOnce)
 {
-    static const uint64_t sleepUs = env::Number("PES17_FENCE_SLEEP", 0);
+    static const uint64_t sleepUs = env::Number("PES17_FENCE_SLEEP", 20);
     GUEST_ORIG(T_D3D_SpinOnce)(ctx, base);
     if (sleepUs && ctx.r3.u32 == 1) std::this_thread::sleep_for(std::chrono::microseconds(sleepUs));
 }
@@ -182,14 +182,14 @@ GUEST_HOOK(T_D3D_SpinOnce)
 #ifdef T_FrameLimiter
 // And the render thread's 40 Hz cap on those scenes, which interval 2 hid on the console, is 60.
 //
-// PES17_LIMITER_SLEEP=1 (off by default): the limiter sleeps until half a millisecond before its
+// PES17_LIMITER_SLEEP (default on; 0 keeps the title's spin): the limiter sleeps until half a millisecond before its
 // target and spins only the rest, where the title spins the whole period on the timebase -- its main
 // loop runs it at 200 Hz, so the main thread kept a whole core busy doing nothing (heat, battery).
 // The timer is { start (u64), ..., ticks a second (u64) at +24 }; the target is start + ticks / rate.
 GUEST_HOOK(T_FrameLimiter)
 {
     static const bool every = !env::Text("PES17_CINEMATIC_60") || env::Flag("PES17_CINEMATIC_60");
-    static const bool sleeps = env::Flag("PES17_LIMITER_SLEEP");
+    static const bool sleeps = !env::Text("PES17_LIMITER_SLEEP") || env::Flag("PES17_LIMITER_SLEEP");
     if (every && ctx.r4.u32 == 40) ctx.r4.u32 = 60;
     if (sleeps && int32_t(ctx.r4.u32) > 0)
     {
