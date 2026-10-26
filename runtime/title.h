@@ -27,6 +27,9 @@
 // The title's frame limiter (`sub_82613E70(timer, rate in Hz)`): spins on the timebase until a
 // 1/rate period has passed. The render thread caps its cinematics at 40 (sub_82619AE0).
 #define T_FrameLimiter         82613E70
+// One pass of D3D's busy-wait on the GPU (`sub_826FCC30(waiter)`: 32 db16cyc then a poll; 1 while
+// still waiting). D3D's fence wait (sub_82713710) calls it in a loop.
+#define T_D3D_SpinOnce         826FCC30
 
 // Data the diagnostics read; zero means "not derived for this title".
 #define T_DATA_DeviceTable     0u

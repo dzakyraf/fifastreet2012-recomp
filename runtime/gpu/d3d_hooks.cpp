@@ -16,6 +16,7 @@
 
 #include <atomic>
 #include <chrono>
+#include <thread>
 #include <cstdio>
 
 namespace
@@ -166,12 +167,44 @@ GUEST_HOOK(T_D3D_ScheduleFlip)
 }
 #endif
 
+#ifdef T_D3D_SpinOnce
+// PES17_FENCE_SLEEP=<us> (off by default): D3D's render thread sleeps that long between its polls
+// of the GPU instead of spinning, giving its core back to the command processor it waits for. On the
+// POCO X7 Pro, which runs both on the same three cores, 20 took the demo match from 42-44 FPS to 52.
+GUEST_HOOK(T_D3D_SpinOnce)
+{
+    static const uint64_t sleepUs = env::Number("PES17_FENCE_SLEEP", 0);
+    GUEST_ORIG(T_D3D_SpinOnce)(ctx, base);
+    if (sleepUs && ctx.r3.u32 == 1) std::this_thread::sleep_for(std::chrono::microseconds(sleepUs));
+}
+#endif
+
 #ifdef T_FrameLimiter
 // And the render thread's 40 Hz cap on those scenes, which interval 2 hid on the console, is 60.
+//
+// PES17_LIMITER_SLEEP=1 (off by default): the limiter sleeps until half a millisecond before its
+// target and spins only the rest, where the title spins the whole period on the timebase -- its main
+// loop runs it at 200 Hz, so the main thread kept a whole core busy doing nothing (heat, battery).
+// The timer is { start (u64), ..., ticks a second (u64) at +24 }; the target is start + ticks / rate.
 GUEST_HOOK(T_FrameLimiter)
 {
     static const bool every = !env::Text("PES17_CINEMATIC_60") || env::Flag("PES17_CINEMATIC_60");
+    static const bool sleeps = env::Flag("PES17_LIMITER_SLEEP");
     if (every && ctx.r4.u32 == 40) ctx.r4.u32 = 60;
+    if (sleeps && int32_t(ctx.r4.u32) > 0)
+    {
+        const uint32_t timer = ctx.r3.u32;
+        const uint64_t start = *GuestPtr<be64>(timer);
+        const uint64_t perSecond = *GuestPtr<be64>(timer + 24);
+        const uint64_t target = start + perSecond / uint32_t(ctx.r4.u32);
+        const uint64_t now = PPC_QueryTimebase();
+        if (perSecond && target > now)
+        {
+            const double seconds = double(target - now) / double(perSecond);
+            if (seconds > 0.001 && seconds < 1.0)
+                std::this_thread::sleep_for(std::chrono::duration<double>(seconds - 0.0005));
+        }
+    }
     GUEST_ORIG(T_FrameLimiter)(ctx, base);
 }
 #endif
