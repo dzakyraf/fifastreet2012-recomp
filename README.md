@@ -127,40 +127,13 @@ are FIFA-specific:
   are the leaf ladders' shared tails and MSVC's exception-handling epilogues. Each module
   still has some left that branch internally: exe 6, dll 17, mostly CRT/SEH unwinding.
 
-## State (2026-10-25), on the Galaxy S20 FE
+## State (2026-10-26)
 
-| step | result |
-|---|---|
-| Recompile, build, install | ok |
-| Boot, DLL load, game start-up | ok |
-| Licence screen, EA logo video, intro video, title ("PRESS START") | render correctly |
-| START, then the autosave "Information" dialog, then loading | works: the transition movie, then the front end builds |
-| **Main menu and "Select Team"** | **render** (HIT THE STREETS, MY SQUAD, PRACTICE ARENA, EXTRA STUFF, GAME MENU), menu frames about 30 FPS |
-| Saving | **fails**: see below |
-
-### How to get to the menu now
-
-START at the title, A on the autosave dialog, then the game shows **"Unable to save Settings File 1"**
-(Retry / Cancel / Continue without saving) and later "failed to load". Choosing **Continue without
-saving** (D-pad down twice, then A) gets past it. `tools/macros/` has the two recordings used for this:
-`to_autosave_dialog.macro` (the user's: START at the title, A on the dialog) and
-`continue_without_saving.macro`. To play one: copy it to
-`/sdcard/Android/data/com.fifastreet.recomp/files/macros/` and
-`adb shell am broadcast -a com.pes2017.recomp.MACRO -p com.fifastreet.recomp --es cmd play --es name <name>`.
-
-### Why saving fails (not fixed)
-
-The game's save library (mount name `rmcsave`, class `StorageDriverImpl`) does this, all on its front-end
-thread: `XamShowDeviceSelectorUI` (we answer pending and write device 1), `XamContentGetDeviceData`,
-`XamContentCreateEnumerator` and an asynchronous `XamEnumerate` of saved games (we complete it "no more
-files", as Xenia does), `XamContentGetDeviceData`, another enumerate, `XamContentClose("rmcsave")`, and
-then it asks for a device again (flags `0x300`) in a loop. **`XamContentCreateEx` is never reached.**
-Its result translator (`sub_83383A68`) maps a completed overlapped of `ERROR_FUNCTION_FAILED` (1627)
-to status 2 and `ERROR_IO_PENDING` to 9. With a placeholder package folder in `saves/` the message
-changes to "storage device is no longer available", so the enumeration result does matter.
-Ideas not yet tried: complete the enumerate overlapped later instead of inside the call (Xenia defers
-it); complete an empty enumeration with success and zero items; have `XamContentCreateEnumerator`
-report a different buffer size.
+The match plays on the Galaxy S20 FE and on the Mac, with sound, saving and the broadcast camera:
+58-61 FPS in play on the phone, 46-51 in the match intro and goal scenes, 60 on the Mac. How to
+build, install and run is in the [top-level README](../README.md); every fix since the state below
+(saving, clubs, XMA audio, tiling, the camera, frame rate, the audio crackle) is listed in
+[CLAUDE.md](../CLAUDE.md) under "Fixed", with what is still open.
 
 ### Debugging aids added
 
@@ -179,15 +152,5 @@ report a different buffer size.
 
 ## Next
 
-1. **Saving** (above). Without it settings and profiles are not kept, and every start shows the dialogs.
-2. **`*TXT_EPIC`-style raw keys in menu text:** some localisation lookups fail. `data/loc/locale.big` is
-   read, but `locale.bh` and `eng_us_upd.db` (title-update files) are absent on the disc.
-3. **Menu speed:** menu frames run at about 30 FPS (33 ms) on the S20 FE, while the title is at 60.
-4. **Three unknown words in the dll** at `8292E634`, `8292E700`, `8292FAF0` (op 4, extended opcode 785):
-   unknown VMX128 operations, skipped.
-5. **Null function pointers** at `8263C69C`, `8263EF44` and `82C14E64` (virtual calls on a UI object
-   that a lookup returned as null): not re-checked since the vtable fix; may be gone.
-6. **XMA audio:** the `XMA*` context API is stubbed, so there is no sound.
-7. **DLC module** (`FootballCompEngzf.xex.dll`) is not recompiled; **installers** do not copy `data/`
-   and `dlc/`; **FIFA's D3D hooks** (`T_D3D_Present`, `T_D3D_BlockOnFence`) are not located.
-8. **Play a match**: not tried yet.
+See "Open" in [CLAUDE.md](../CLAUDE.md). Still untouched from the original list: the DLC module
+(`FootballCompEngzf.xex.dll`) is not recompiled, and the installers do not copy `data/` and `dlc/`.
