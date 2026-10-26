@@ -1,156 +1,140 @@
-# FIFA Street (Xbox 360) → Android, via XenonRecomp
+# FIFA Street (Xbox 360) on Android and macOS
 
-Same approach as `../../PES2017-RECOMP/pes2017-android`: XenonRecomp turns the PowerPC code
-into C++, and the NDK builds it for arm64. The XenonRecomp copy in `third_party/XenonRecomp`
-comes from that project, with its local changes. The tools in `tools/` come from there too,
-made module-aware.
+A port of **FIFA Street** (EA Sports, 2012, Xbox 360) that runs natively on **Android phones** and
+**Apple Silicon Macs**. It is not an emulator: the game's PowerPC code was translated ahead of time to C++
+with [XenonRecomp](third_party/XenonRecomp) and compiled for arm64, and a runtime stands in for the Xbox 360's
+kernel, GPU (drawn with Vulkan, through MoltenVK on the Mac) and audio hardware.
 
-## What is different from PES 2017: two code modules
+**No game data is included.** You need your own copy of the game, extracted from a disc you own.
 
-| module | file on disc | base | `.text` | functions |
-|---|---|---|---|---|
-| `exe` | `default.xex` | `0x82000000` | `0x82050000` +`0x119748` | 7,394 |
-| `dll` | `fifadllzf.xex.dll` (the game) | `0x82300000` | `0x82610000` +`0x164318C` | 156,893 |
+## What works
 
-- **Imports:** both import only `xboxkrnl.exe` and `xam.xex`, 321 kernel imports in all.
-- **Loading the DLL:** the exe loads the DLL at run time through `XexLoadImage` and
-  `XexGetProcedureAddress`. The DLL has an `.edata` export table.
-- **No relocation:** the images don't overlap, so each module is recompiled at its own base.
+| | |
+|---|---|
+| Boot, title screen, main menu | works |
+| Saving settings and progress | works |
+| Team select, Match Setup | works |
+| A full 5-a-side match: players, ball, camera, HUD, crowd, sound | works |
+| Match intro and goal celebrations | works |
+| Other modes (World Tour, Practice Arena), online, DLC | not tested |
 
-`tools/merge_modules.py` makes the two outputs link into one library. It does four things:
+Tested on a Samsung Galaxy S20 FE, a POCO X7 Pro and an Apple Silicon Mac.
 
-- **Mapping tables:** renames them to `PPCFuncMappings_exe` and `PPCFuncMappings_dll`.
-- **Shared names:** adds an `_exe` suffix to the exe's copies of the names both modules define.
-  These are the register save/restore helpers and `_xstart`.
-- **Address range:** sets `PPC_IMAGE_*` and `PPC_CODE_*` to one range covering both modules,
-  so indirect calls work in either direction. The per-module values stay as `FIFA_EXE_*` and
-  `FIFA_DLL_*`.
-- **Runtime outputs:** writes `ppc/ppc_modules.h`, the module table for `XexLoadImage`. It also
-  writes one `ppc/stubs_generated.cpp` for the union of both modules' imports.
+## Performance
 
-## Build and run
+Measured in the match the game plays by itself at the title screen, 60 seconds per run, with the phone's
+default settings (the 3D scene is drawn at 75% resolution, without multisampling):
+
+| device | GPU | average FPS | seconds at 55+ FPS (of 60) |
+|---|---|---|---|
+| Galaxy S20 FE (Snapdragon 865) | Adreno 650 | 57.6 | 48 |
+| POCO X7 Pro (Dimensity 8400) | Mali-G720 | 58.7 | 55 |
+| Apple Silicon Mac | Apple GPU (MoltenVK) | 60 | all |
+
+- The game aims for 60 FPS. Close-up scenes (the match intro, goals) are the heaviest and can dip into the 40s–50s on
+  the phones.
+- Menus and cutscenes run at 60 here, where the console capped them at 30. Set `PES17_CINEMATIC_60=0` to get the
+  console's 30 back.
+- Two changes made the biggest difference on phones: the render and main threads no longer burn a core
+  waiting (`PES17_FENCE_SLEEP`, `PES17_LIMITER_SLEEP`, on by default), and the renderer no longer stalls the
+  GPU three times a frame. On the X7 Pro that took the match from 46 to 59 FPS; on the S20 FE it kept 58 FPS
+  and cut CPU use from 358% to 228% of a core, so it runs cooler.
+
+## Requirements
+
+- **Game files:** the contents of the FIFA Street disc (title ID `4541097B`), extracted to a folder.
+- **Android:** an arm64 phone, Android 8.0 or newer, with Vulkan and ARMv8.2 cores (Snapdragon 845 or newer). 8 GB
+  of RAM or more is recommended. About 4.5 GB of free storage.
+- **Mac:** Apple Silicon, with Homebrew `llvm`, `molten-vk`, `vulkan-loader`, `cmake` and `ninja`.
+- **To build:** CMake 3.20+, Ninja, Python 3, Clang; for Android, the Android SDK with NDK 28 and `adb`.
+
+## How to run it
+
+All commands run from this folder (`app/`). The game folder goes next to it, in `../gamefiles/`, for example
+`../gamefiles/FIFA Street/default.xex`.
+
+**1. Generate the code** (about 3 minutes; needs the game files):
 
 ```bash
 ./recompile.sh
 ```
 
-`./recompile.sh` takes about 3 minutes and writes `ppc/exe` and `ppc/dll`, then merges them.
-`MODULES=dll` limits it to one module. Files whose text did not change keep their timestamps,
-so ninja only rebuilds what changed. A change to `ppc_context.h` (XenonRecomp's own header)
-still rebuilds everything, about 25 minutes.
+**2a. Run on the Mac** (the first build takes about 15 minutes):
+
+```bash
+cmake -S . -B build-mac -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=/opt/homebrew/opt/llvm/bin/clang -DCMAKE_CXX_COMPILER=/opt/homebrew/opt/llvm/bin/clang++
+```
+
+```bash
+ninja -C build-mac pes17
+```
+
+```bash
+G=$(ls -d ../gamefiles/*/ | head -1); ./build-mac/pes17 "${G%/}/default.xex" "${G%/}"
+```
+
+Controls: a gamepad, or the keyboard: Return = START, Space or Z = A, X or C = B, arrow keys = D-pad, Esc = BACK.
+
+**2b. Run on Android** (phone connected over USB with USB debugging on). Configure once:
 
 ```bash
 NDK=$(ls -d ~/Library/Android/sdk/ndk/28.* | tail -1)
-cmake -S . -B build-android -G Ninja -DCMAKE_TOOLCHAIN_FILE="$NDK/build/cmake/android.toolchain.cmake" \
-      -DANDROID_ABI=arm64-v8a -DANDROID_PLATFORM=android-26 -DANDROID_STL=c++_shared \
-      -DPES17_DIAGNOSTICS=OFF -DPES17_USE_SDL=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS_RELEASE="-O2 -DNDEBUG"
+cmake -S . -B build-android -G Ninja -DCMAKE_TOOLCHAIN_FILE="$NDK/build/cmake/android.toolchain.cmake" -DANDROID_ABI=arm64-v8a -DANDROID_PLATFORM=android-26 -DANDROID_STL=c++_shared -DPES17_DIAGNOSTICS=OFF -DPES17_USE_SDL=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS_RELEASE="-O2 -DNDEBUG"
 ```
+
+Copy the game to the phone (the whole disc except `$SystemUpdate`, about 4.3 GB; the folders have to exist first):
 
 ```bash
-ANDROID_SERIAL=RR8RB04X2SV tools/deploy.sh 60
+G=$(ls -d ../gamefiles/*/ | head -1); D=/sdcard/Android/data/com.fifastreet.recomp/files/game
+adb shell mkdir -p $D
+adb push "${G%/}/." $D/
 ```
 
-`tools/deploy.sh` builds `libpes17.so`, packages it through Gradle, installs
-`com.fifastreet.recomp` and launches it. It then saves the run's log to `logs/device.txt`.
-`tools/logtail.sh run|errors|follow` reads `game.log` on the device.
+Build, install and start it:
 
-The game folder has to be at `/sdcard/Android/data/com.fifastreet.recomp/files/game/`. It is
-the whole disc except `$SystemUpdate`: 104 files, 4.3 GB. `adb push` cannot create
-subdirectories there, so make them with `adb shell mkdir -p` first. The game folder name on
-the Mac has a non-breaking space before `[RF]`, so `recompile.sh` finds it with a glob. Pass
-`GAME=` to override that.
+```bash
+tools/deploy.sh 30
+```
 
-## The runtime (from pes2017-android)
+With more than one device connected, set `ANDROID_SERIAL=<serial>` first. Controls: the on-screen pad, or any
+Bluetooth or USB gamepad. The first start shows the game's autosave notice; press A.
 
-`runtime/` and `android/` are pes2017-android's. Internal names are unchanged: `libpes17.so`,
-`PES17_*`, and the Kotlin package `com.pes2017.recomp`. Only the `applicationId`
-(`com.fifastreet.recomp`) and the app name differ, so FIFA installs beside PES. These parts
-are FIFA-specific:
+## Settings
 
-- **`runtime/title.h`:** FIFA's entry points. The PES hook addresses are not defined, so
-  those hooks compile out.
-- **`runtime/kernel/modules.cpp`:** maps a module at its base and copies its XEX header in. It
-  resolves that module's data imports, fills its slice of the function table, and builds an
-  `LDR_DATA_TABLE_ENTRY` as its handle. `main.cpp` maps `default.xex` this way.
-- **`kernel/misc.cpp`:**
-  - `XexLoadImage` maps the DLL from the game folder and runs
-    `DllMain(handle, DLL_PROCESS_ATTACH, 0)`.
-  - `XexGetProcedureAddress` resolves ordinals through the XEX security info's export table.
-  - `XexGetModuleHandle` and `XexGetModuleSection` are implemented too.
-- **`kernel/pes_imports.cpp` `ResolveDataImports(header)`:** runs once per module.
-  `KeTimeStampBundle` and `KeDebugMonitorData` are shared objects. The old filter treated the
-  record's library byte as a constant, so it left xam's import slots unresolved. It now reads
-  that byte as the library index.
-- **Installer:** FIFA's title ID (`0x4541097B`) and its `default.xex` SHA-256. It recognises
-  the `.big`/`.bh` archives and the DLL. Both installers (the folder import in
-  `InstallActivity.kt` and the ISO path in `install.cpp`) still copy only top-level files, not
-  `data/` and `dlc/`.
+Settings are environment variables. On the Mac, put them before the command. On Android, write one `NAME=value`
+per line to `files/env_override` in the app's folder:
 
-## Changes to XenonRecomp and the tools
+```bash
+adb shell "echo PES17_CINEMATIC_60=0 > /sdcard/Android/data/com.fifastreet.recomp/files/env_override"
+```
 
-- **`bdz`/`bdnz`/`bdnzf` to a target outside the function:** now a tail call, as the other
-  conditional branches already were. Before, they emitted a `goto` to a label that does not
-  exist.
-- **Newly implemented instructions:** these used to compile to `__builtin_debugtrap()` and
-  crashed the game's vector trig routine.
-  - `vcmpbfp`/`vcmpbfp128`, the bounds compare.
-  - `vupkd3d128` `float16_2` and `float16_4`, the inverses of the existing packs.
-  - `blrl`.
-- **Vector and integer instructions that were silently dropped:** about 1,800 sites in the
-  game DLL hit `Unrecognized instruction`. XenonRecomp prints that line and emits
-  nothing, so the instruction just does not happen. They were the pixel arithmetic of the game's
-  video decoder, and the boot logo video came out as corrupt Y/Cb/Cr planes (green, striped).
-  Now implemented: `vsububm`, `vsubuwm`, `vsubsbs`, `vaddsbs`, `vmaxsb`, `vminsb`, `vmaxub`,
-  `vminub`, `vminsw`, `vsrb`, `vcmpgtsw`, `vcmpgtsb`, `vcmpequh`, `vsl`, `vslo`/`vslo128`,
-  `vsro`/`vsro128`, the saturating packs `vpkuhus128`, `vpkuwus128`, `vpkuwum128`,
-  `vpkshss128`, and the scalar `lhaux` and `lfdux`. The whole-vector shifts and the saturating
-  narrowing helpers are in `XenonUtils/ppc_context.h`, which means a change there rebuilds the
-  whole game (about 25 minutes). After this, `grep "Unrecognized" logs/recomp-*.txt` shows only
-  3 words in the dll (below).
-- **Functions reached only through a vtable (`function_starts_file_path`):** a method that is only
-  called through a vtable has no `.pdata` entry and is no `bl` target, so the recompiler folded it
-  into the function before it and a call through the table found no code ("indirect call to
-  8338F5B8 has no recompiled function", 23,000 times; the front end looped on it and no menu was ever
-  built). `tools/vtable_starts.py` finds them (a code pointer in the data, right after a `blr` or an
-  unconditional `b`, one of a run of code pointers, not a jump-table label), `recompile.sh` writes
-  `config/<m>_function_starts.txt`, and XenonRecomp analyses each entry like a call target. About 16,000
-  such starts in the dll, 51 of them swallowed; `fixbounds.py` shares the same finder. The old rule
-  accepted only a `blr` before the entry, which missed everything ending in a tail jump.
-- **`find_missed_switches.py`:**
-  - It now finds unguarded tables of halfword offsets from a base label (`lhzx … add; mtctr;
-    bctr`). FIFA has 2: `826E6E28` and `83AA132C`. Without them the job threads called into
-    the middle of a function and crashed.
-  - It no longer walks back across a basic block's end. Before, a call through a
-    function-pointer struct (`83B89FB8`) became a one-label "switch".
-- **`fix_ladders.py`:** a branch that XenonRecomp could only write as `// ERROR` plus a silent
-  `return` now gets its own function, when the target block runs straight to its `blr`. These
-  are the leaf ladders' shared tails and MSVC's exception-handling epilogues. Each module
-  still has some left that branch internally: exe 6, dll 17, mostly CRT/SEH unwinding.
+| setting | effect |
+|---|---|
+| `PES17_CINEMATIC_60=0` | menus, the match intro and goal scenes at 30 FPS, as on the console (default: 60) |
+| `PES17_SCENE_SCALE=<fraction>` | resolution of the 3D scene, 1 is full (Android default 0.75) |
+| `PES17_NO_MSAA=1` | no multisampling (Android default) |
+| `PES17_FPS_LIMIT=<n>` | cap the frame rate |
+| `PES17_FENCE_SLEEP=<us>` | default 20; `0` restores the game's busy-wait on the GPU |
+| `PES17_LIMITER_SLEEP=0` | restores the game's busy-wait in its frame limiter (default: sleeps) |
 
-## State (2026-10-26)
+## Known limitations
 
-The match plays on the Galaxy S20 FE and on the Mac, with sound, saving and the broadcast camera:
-58-61 FPS in play on the phone, 46-51 in the match intro and goal scenes, 60 on the Mac. How to
-build, install and run is in the [top-level README](../README.md); every fix since the state below
-(saving, clubs, XMA audio, tiling, the camera, frame rate, the audio crackle) is listed in
-[CLAUDE.md](../CLAUDE.md) under "Fixed", with what is still open.
+- Only the 5-a-side street match from "Hit the Streets" has been played end to end.
+- Close-up scenes dip below 60 on phones. On the phones tested the limit is the CPU, not the GPU.
+- The side-by-side seam at the middle of the screen in some multi-tile frames is not fixed.
+- The game's downloadable content module is not recompiled yet, and the Android installer copies only the top-level
+  game files, so the `data/` and `dlc/` folders have to be pushed by hand as shown above.
 
-### Debugging aids added
+## Documentation for developers
 
-- `touch .../files/trace_all`: every XAM/kernel import is logged with its arguments and result (`->`
-  lines), not just the first three calls.
-- `touch .../files/capture_request` (the CAPTURE button): prints every thread's stack. On Android it
-  now works (SIGURG), but the frame-pointer walk is unreliable for guest frames. **For real stacks
-  use simpleperf on the rooted phone**: `simpleperf record -p <pid> --call-graph fp --duration 6`,
-  then `report --comms "guest thread N" --sort symbol --children` (see how thread 26 was found
-  spending 96% of its time printing backtraces for null calls).
-- `touch .../files/dump_frame` also writes `plane_*.bin` (raw 8-bit video planes) and `raw_*.bin`
-  (raw DXT5 texture bytes) next to the frame images.
-- Cross-thread APCs (`NtQueueApcThread`, `KeInitializeApc`, `KeInsertQueueApc`; `kernel/apc.cpp`) are
-  implemented. They were not what the front end needed, but the game's `SleepEx(INFINITE)` workers
-  expect them.
+- [Technical notes](docs/technical-notes.md): how the two code modules and the recompiler changes work.
+- [Developer notes](../CLAUDE.md): every fix so far, open problems, and the debugging tools (scripted runs and
+  screenshots on the Mac, profiling on the phone).
 
-## Next
+## Legal
 
-See "Open" in [CLAUDE.md](../CLAUDE.md). Still untouched from the original list: the DLC module
-(`FootballCompEngzf.xex.dll`) is not recompiled, and the installers do not copy `data/` and `dlc/`.
+FIFA Street is © Electronic Arts. This project contains no game code or data and does not help with obtaining
+either; you need a copy you own. The project is licensed under GPL-3.0 (see [LICENSE](LICENSE)). It builds on
+[XenonRecomp](https://github.com/hedge-dev/XenonRecomp) for the recompiler,
+[Xenia](https://github.com/xenia-project/xenia) as the reference for Xbox 360 behaviour, and
+[libadrenotools](https://github.com/bylaws/libadrenotools) for loading custom Adreno drivers.
