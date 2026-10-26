@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The panel menus and settings sit on: near-white, over the hero picture. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <solid android:color="#EBF2F4F8" />
+    <stroke android:width="1dp" android:color="#C9D1DE" />
+</shape>

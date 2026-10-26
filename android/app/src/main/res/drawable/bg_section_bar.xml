@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A settings panel's header bar: navy, with the wordmark's red down its left edge. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="rectangle">
+            <gradient android:angle="0" android:startColor="#0A1B45" android:endColor="#004D98" />
+        </shape>
+    </item>
+    <item android:gravity="start" android:width="4dp">
+        <shape android:shape="rectangle">
+            <solid android:color="#DC0014" />
+        </shape>
+    </item>
+</layer-list>

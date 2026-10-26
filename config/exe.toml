@@ -1,0 +1,37 @@
+[main]
+file_path = "../fifa/default.xex"
+out_directory_path = "../ppc/exe"
+switch_table_file_path = "exe_switch_tables.toml"
+function_starts_file_path = "exe_function_starts.txt"
+
+skip_lr = false
+skip_msr = false
+ctr_as_local = false
+xer_as_local = false
+reserved_as_local = false
+cr_as_local = false
+non_argument_as_local = false
+non_volatile_as_local = false
+
+# Located by byte pattern in the decoded PE (tools/find_helpers.py).
+restgprlr_14_address = 0x82105420
+savegprlr_14_address = 0x821053D0
+restfpr_14_address = 0x8210688C
+savefpr_14_address = 0x82106840
+restvmx_14_address = 0x821087C8
+savevmx_14_address = 0x82108530
+restvmx_64_address = 0x8210885C
+savevmx_64_address = 0x821085C4
+
+functions = [
+# --- fixbounds begin ---
+# --- fixbounds end ---
+# --- fix_ladders begin ---
+    { address = 0x82105264, size = 0x10 },
+    { address = 0x82105290, size = 0x8 },
+    { address = 0x8211450C, size = 0x14 },
+    { address = 0x8211B7C4, size = 0x18 },
+    { address = 0x82135BC0, size = 0x18 },
+    { address = 0x8213868C, size = 0x8 },
+# --- fix_ladders end ---
+]

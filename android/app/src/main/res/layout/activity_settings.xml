@@ -1,0 +1,841 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Tabbed settings, laid out like PES 6's settings screens: a header strip
+     for the tabs, the settings as rows on a panel, a help strip at the foot.
+     The hero picture stands faded behind on the right. -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/pes_page">
+
+    <ImageView
+        android:layout_width="wrap_content"
+        android:layout_height="match_parent"
+        android:layout_gravity="end"
+        android:adjustViewBounds="true"
+        android:alpha="0.22"
+        android:scaleType="fitEnd"
+        android:src="@drawable/launcher_players"
+        android:importantForAccessibility="no" />
+
+<LinearLayout
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical">
+
+    <include layout="@layout/view_back_bar" />
+
+    <LinearLayout
+        android:id="@+id/tab_bar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@drawable/bg_panel_title"
+        android:orientation="horizontal"
+        android:paddingStart="8dp"
+        android:paddingEnd="8dp"
+        android:paddingTop="4dp">
+
+        <Button
+            android:id="@+id/tab_graphics"
+            style="@style/TabEntry"
+            android:text="@string/tab_graphics" />
+
+        <Button
+            android:id="@+id/tab_controls"
+            style="@style/TabEntry"
+            android:text="@string/tab_controls" />
+
+        <Button
+            android:id="@+id/tab_advanced"
+            style="@style/TabEntry"
+            android:text="@string/tab_advanced" />
+
+        <Button
+            android:id="@+id/tab_files"
+            style="@style/TabEntry"
+            android:text="@string/tab_files" />
+
+    </LinearLayout>
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:layout_marginEnd="16dp"
+            android:layout_marginTop="10dp"
+            android:layout_marginBottom="10dp"
+            android:background="@drawable/bg_panel"
+            android:orientation="vertical"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp"
+            android:paddingBottom="10dp">
+
+            <!-- GRAPHICS: the one-tap preset first, then what the picture looks like. -->
+
+            <LinearLayout
+                android:id="@+id/page_graphics"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <TextView
+                    style="@style/SectionHeading"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/section_preset" />
+
+                <LinearLayout style="@style/SettingGroup">
+
+                    <TextView
+                        android:id="@+id/preset_label"
+                        style="@style/SettingLabel"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal">
+
+                        <Button
+                            android:id="@+id/preset_low"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="@string/preset_low" />
+
+                        <Button
+                            android:id="@+id/preset_medium"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="6dp"
+                            android:layout_weight="1"
+                            android:text="@string/preset_medium" />
+
+                        <Button
+                            android:id="@+id/preset_high"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="6dp"
+                            android:layout_weight="1"
+                            android:text="@string/preset_high" />
+
+                    </LinearLayout>
+
+                    <TextView
+                        android:id="@+id/preset_detected"
+                        style="@style/SettingHint"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content" />
+
+                </LinearLayout>
+
+                <TextView
+                    style="@style/SectionHeading"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/section_display" />
+
+                <LinearLayout style="@style/SettingGroup">
+
+                    <TextView
+                        android:id="@+id/resolution_label"
+                        style="@style/SettingLabel"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content" />
+
+                    <SeekBar
+                        android:id="@+id/resolution"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content" />
+
+                    <TextView
+                        style="@style/SettingHint"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/resolution_hint" />
+
+                    <androidx.appcompat.widget.SwitchCompat
+                        android:id="@+id/widescreen"
+                        style="@style/SettingSwitch"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/widescreen" />
+
+                    <TextView
+                        style="@style/SettingHint"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/widescreen_hint" />
+
+                    <TextView
+                        android:id="@+id/ball_scale_label"
+                        style="@style/SettingLabel"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content" />
+
+                    <SeekBar
+                        android:id="@+id/ball_scale"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content" />
+
+                    <TextView
+                        style="@style/SettingHint"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/ball_scale_hint" />
+
+                </LinearLayout>
+
+                <TextView
+                    style="@style/SectionHeading"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/section_image_quality" />
+
+                <LinearLayout style="@style/SettingGroup">
+
+                    <TextView
+                        android:id="@+id/render_scale_label"
+                        style="@style/SettingLabel"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content" />
+
+                    <SeekBar
+                        android:id="@+id/render_scale"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content" />
+
+                    <TextView
+                        style="@style/SettingHint"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/render_scale_hint" />
+
+                    <TextView
+                        android:id="@+id/scene_scale_label"
+                        style="@style/SettingLabel"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content" />
+
+                    <SeekBar
+                        android:id="@+id/scene_scale"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content" />
+
+                    <TextView
+                        style="@style/SettingHint"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/scene_scale_hint" />
+
+                    <androidx.appcompat.widget.SwitchCompat
+                        android:id="@+id/msaa"
+                        style="@style/SettingSwitch"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/msaa" />
+
+                    <TextView
+                        style="@style/SettingHint"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/msaa_hint" />
+
+                    <androidx.appcompat.widget.SwitchCompat
+                        android:id="@+id/fsr"
+                        style="@style/SettingSwitch"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/fsr" />
+
+                    <TextView
+                        style="@style/SettingHint"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/fsr_hint" />
+
+                    <TextView
+                        android:id="@+id/fsr_sharp_label"
+                        style="@style/SettingLabel"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content" />
+
+                    <SeekBar
+                        android:id="@+id/fsr_sharp"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content" />
+
+                </LinearLayout>
+
+            </LinearLayout>
+
+            <!-- PERFORMANCE: frame rate, then heat and battery. -->
+
+            <LinearLayout
+                android:id="@+id/page_performance"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <TextView
+                    style="@style/SectionHeading"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/section_hud" />
+
+                <LinearLayout style="@style/SettingGroup">
+
+                    <RadioGroup
+                        android:id="@+id/hud_level"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:paddingStart="6dp">
+
+                        <RadioButton
+                            android:id="@+id/hud_off"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="@string/hud_off"
+                            android:textColor="@color/pes_text" />
+
+                        <RadioButton
+                            android:id="@+id/hud_minimal"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="@string/hud_minimal"
+                            android:textColor="@color/pes_text" />
+
+                        <RadioButton
+                            android:id="@+id/hud_normal"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="@string/hud_normal"
+                            android:textColor="@color/pes_text" />
+
+                        <RadioButton
+                            android:id="@+id/hud_complete"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="@string/hud_complete"
+                            android:textColor="@color/pes_text" />
+
+                    </RadioGroup>
+
+                    <TextView
+                        style="@style/SettingHint"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/hud_level_hint" />
+
+                </LinearLayout>
+
+                <TextView
+                    style="@style/SectionHeading"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/section_frame_rate" />
+
+                <LinearLayout style="@style/SettingGroup">
+
+                    <TextView
+                        android:id="@+id/fps_limit_label"
+                        style="@style/SettingLabel"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content" />
+
+                    <SeekBar
+                        android:id="@+id/fps_limit"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content" />
+
+                    <TextView
+                        style="@style/SettingHint"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/fps_limit_hint" />
+
+                    <androidx.appcompat.widget.SwitchCompat
+                        android:id="@+id/prefer60"
+                        style="@style/SettingSwitch"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/prefer_60" />
+
+                    <TextView
+                        style="@style/SettingHint"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/prefer_60_hint" />
+
+
+                </LinearLayout>
+
+                <TextView
+                    style="@style/SectionHeading"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/section_thermal" />
+
+                <LinearLayout style="@style/SettingGroup">
+
+                    <androidx.appcompat.widget.SwitchCompat
+                        android:id="@+id/heat_scale"
+                        style="@style/SettingSwitch"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/heat_scale" />
+
+                    <TextView
+                        style="@style/SettingHint"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/heat_scale_hint" />
+
+                    <androidx.appcompat.widget.SwitchCompat
+                        android:id="@+id/perf_hint"
+                        style="@style/SettingSwitch"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/perf_hint" />
+
+                    <TextView
+                        style="@style/SettingHint"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/perf_hint_hint" />
+
+                    <androidx.appcompat.widget.SwitchCompat
+                        android:id="@+id/crowd"
+                        style="@style/SettingSwitch"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/crowd" />
+
+                    <TextView
+                        style="@style/SettingHint"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/crowd_hint" />
+
+                </LinearLayout>
+
+            </LinearLayout>
+
+            <!-- CONTROLS & SOUND -->
+
+            <LinearLayout
+                android:id="@+id/page_controls"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <TextView
+                    style="@style/SectionHeading"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/section_controls" />
+
+                <LinearLayout style="@style/SettingGroup">
+
+                    <androidx.appcompat.widget.SwitchCompat
+                        android:id="@+id/touch"
+                        style="@style/SettingSwitch"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/touch_controls" />
+
+                    <androidx.appcompat.widget.SwitchCompat
+                        android:id="@+id/gamepad"
+                        style="@style/SettingSwitch"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/use_gamepad" />
+
+                    <TextView
+                        style="@style/SettingHint"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/gamepad_hint" />
+
+                    <androidx.appcompat.widget.SwitchCompat
+                        android:id="@+id/vibration"
+                        style="@style/SettingSwitch"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/vibration" />
+
+                    <TextView
+                        style="@style/SettingLabel"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/button_style" />
+
+                    <RadioGroup
+                        android:id="@+id/button_style"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:paddingStart="6dp">
+
+                        <RadioButton
+                            android:id="@+id/button_style_playstation"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="@string/button_style_playstation"
+                            android:textColor="@color/pes_text" />
+
+                        <RadioButton
+                            android:id="@+id/button_style_xbox"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="@string/button_style_xbox"
+                            android:textColor="@color/pes_text" />
+
+                    </RadioGroup>
+
+                    <Button
+                        android:id="@+id/arrange_controls"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="6dp"
+                        android:text="@string/arrange_controls" />
+
+                    <TextView
+                        style="@style/SettingHint"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/arrange_controls_hint" />
+
+                </LinearLayout>
+
+                <TextView
+                    style="@style/SectionHeading"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/section_sound" />
+
+                <LinearLayout style="@style/SettingGroup">
+
+                    <androidx.appcompat.widget.SwitchCompat
+                        android:id="@+id/audio"
+                        style="@style/SettingSwitch"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/audio_on" />
+
+                </LinearLayout>
+
+            </LinearLayout>
+
+            <!-- ADVANCED: what most players never need to touch. -->
+
+            <LinearLayout
+                android:id="@+id/page_advanced"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <TextView
+                    style="@style/SettingHint"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/advanced_warning" />
+
+                <TextView
+                    style="@style/SectionHeading"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/section_rendering" />
+
+                <LinearLayout style="@style/SettingGroup">
+
+                    <androidx.appcompat.widget.SwitchCompat
+                        android:id="@+id/load_scale"
+                        style="@style/SettingSwitch"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/load_scale" />
+
+                    <TextView
+                        style="@style/SettingHint"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/load_scale_hint" />
+
+                </LinearLayout>
+
+                <TextView
+                    style="@style/SectionHeading"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/section_memory" />
+
+                <LinearLayout style="@style/SettingGroup">
+
+                    <androidx.appcompat.widget.SwitchCompat
+                        android:id="@+id/low_memory"
+                        style="@style/SettingSwitch"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/low_memory" />
+
+                    <TextView
+                        style="@style/SettingHint"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/low_memory_hint" />
+
+                    <TextView
+                        android:id="@+id/texture_label"
+                        style="@style/SettingLabel"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content" />
+
+                    <SeekBar
+                        android:id="@+id/texture_budget"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content" />
+
+                    <TextView
+                        style="@style/SettingHint"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/texture_hint" />
+
+                    <androidx.appcompat.widget.SwitchCompat
+                        android:id="@+id/prewarm_all"
+                        style="@style/SettingSwitch"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/prewarm_all" />
+
+                    <TextView
+                        style="@style/SettingHint"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/prewarm_all_hint" />
+
+                </LinearLayout>
+
+                <TextView
+                    style="@style/SectionHeading"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/section_developer" />
+
+                <LinearLayout style="@style/SettingGroup">
+
+                    <androidx.appcompat.widget.SwitchCompat
+                        android:id="@+id/developer_tools"
+                        style="@style/SettingSwitch"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/developer_tools" />
+
+                    <TextView
+                        style="@style/SettingHint"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/developer_tools_hint" />
+
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/testing_heading"
+                    style="@style/SectionHeading"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/section_testing" />
+
+                <LinearLayout
+                    android:id="@+id/testing_group"
+                    style="@style/SettingGroup">
+
+                    <androidx.appcompat.widget.SwitchCompat
+                        android:id="@+id/gamepad_p2"
+                        style="@style/SettingSwitch"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/gamepad_p2" />
+
+                    <TextView
+                        style="@style/SettingHint"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/gamepad_p2_hint" />
+
+                </LinearLayout>
+
+            </LinearLayout>
+
+            <!-- GAME FILES: where the game is, the saves, what the app keeps. -->
+
+            <LinearLayout
+                android:id="@+id/page_files"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <TextView
+                    style="@style/SectionHeading"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/section_files" />
+
+                <LinearLayout style="@style/SettingGroup">
+
+                    <TextView
+                        android:id="@+id/paths"
+                        style="@style/SettingHint"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:textColor="@color/pes_text"
+                        android:textSize="12sp" />
+
+                    <TextView
+                        android:id="@+id/storage_access"
+                        style="@style/SettingHint"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:textColor="@color/pes_text"
+                        android:textSize="12sp" />
+
+                    <Button
+                        android:id="@+id/grant_storage"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="6dp"
+                        android:text="@string/allow_storage" />
+
+                    <Button
+                        android:id="@+id/change_folder"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="6dp"
+                        android:text="@string/entry_select_folder" />
+
+                    <Button
+                        android:id="@+id/forget"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="6dp"
+                        android:text="@string/forget_install" />
+
+                    <TextView
+                        style="@style/SettingHint"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/forget_explained" />
+
+                </LinearLayout>
+
+                <TextView
+                    style="@style/SectionHeading"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/section_saves" />
+
+                <LinearLayout style="@style/SettingGroup">
+
+                    <TextView
+                        android:id="@+id/saves_summary"
+                        style="@style/SettingHint"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:textColor="@color/pes_text"
+                        android:textSize="12sp" />
+
+                    <Button
+                        android:id="@+id/backup_saves"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="6dp"
+                        android:text="@string/backup_saves" />
+
+                    <Button
+                        android:id="@+id/restore_saves"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="6dp"
+                        android:text="@string/restore_saves" />
+
+                    <TextView
+                        style="@style/SettingHint"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/saves_backup_hint" />
+
+                </LinearLayout>
+
+                <TextView
+                    style="@style/SectionHeading"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/section_storage" />
+
+                <LinearLayout style="@style/SettingGroup">
+
+                    <TextView
+                        android:id="@+id/storage"
+                        style="@style/SettingHint"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:textColor="@color/pes_text"
+                        android:textSize="12sp" />
+
+                    <Button
+                        android:id="@+id/clear_shaders"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="6dp"
+                        android:text="@string/clear_shaders" />
+
+                    <Button
+                        android:id="@+id/clear_logs"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="6dp"
+                        android:text="@string/clear_logs" />
+
+                    <Button
+                        android:id="@+id/manage_captures"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="6dp"
+                        android:text="@string/captures_open" />
+
+                </LinearLayout>
+
+            </LinearLayout>
+
+        </LinearLayout>
+    </ScrollView>
+
+    <!-- The help strip along the foot, as PES 6's "Press X to confirm" line. -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="26dp"
+        android:background="@drawable/bg_ticker"
+        android:gravity="center_vertical"
+        android:paddingStart="16dp"
+        android:paddingTop="2dp"
+        android:singleLine="true"
+        android:ellipsize="end"
+        android:text="@string/settings_help_strip"
+        android:textColor="@color/pes_on_dark"
+        android:textSize="12sp"
+        android:fontFamily="sans-serif-condensed" />
+</LinearLayout>
+</FrameLayout>

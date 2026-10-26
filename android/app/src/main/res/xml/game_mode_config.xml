@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 13+ game modes (GameManager): offering Performance lets the system's game
+     dashboard (and a vendor's game booster that follows it) give the run more CPU and GPU.
+     The renderer scales its own scene, so the system's downscaling and fps override stay off. -->
+<game-mode-config xmlns:android="http://schemas.android.com/apk/res/android"
+    android:supportsPerformanceGameMode="true"
+    android:supportsBatteryGameMode="true"
+    android:allowGameDownscaling="false"
+    android:allowGameFpsOverride="false"
+    android:allowGameAngleDriver="false" />

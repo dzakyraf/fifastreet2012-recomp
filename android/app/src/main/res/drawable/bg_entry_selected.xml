@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The chosen menu entry's band: navy under the text, fading out to the right,
+     with a red rule along its foot (PES 6's main menu, in PES 2017's colours). -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="rectangle">
+            <gradient android:angle="0" android:startColor="#FF0A1B45" android:centerColor="#D90A1B45" android:endColor="#000A1B45" />
+        </shape>
+    </item>
+    <item android:gravity="bottom" android:height="2dp">
+        <shape android:shape="rectangle">
+            <gradient android:angle="0" android:startColor="#FFDC0014" android:endColor="#00DC0014" />
+        </shape>
+    </item>
+</layer-list>

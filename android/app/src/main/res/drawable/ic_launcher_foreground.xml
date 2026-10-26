@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The app's icon art (tools/make_artwork.py), inset so the ball stays
+     inside the adaptive icon's safe zone whatever mask the launcher applies. -->
+<inset xmlns:android="http://schemas.android.com/apk/res/android"
+    android:drawable="@drawable/ic_launcher_art"
+    android:inset="9%" />

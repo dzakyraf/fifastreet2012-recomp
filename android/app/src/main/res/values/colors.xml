@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The app's own palette, shared with its artwork (tools/make_artwork.py):
+     a white page, navy and blue, a red accent and a gold highlight. As in the
+     PES 5/6 menus, the chosen entry is the one in gold on a dark band. -->
+<resources>
+    <color name="launcher_background">#FFFFFF</color>
+    <color name="pes_page">#FFFFFF</color>
+    <color name="pes_navy">#0A1B45</color>
+    <color name="pes_blue">#004D98</color>
+    <color name="pes_red">#DC0014</color>
+    <color name="pes_garnet">#A50044</color>
+    <color name="pes_gold">#EDBB00</color>
+    <color name="pes_panel">#F2F4F8</color>
+    <color name="pes_row">#FFFFFF</color>
+    <color name="pes_line">#C9D1DE</color>
+    <color name="pes_text">#0A1B45</color>
+    <color name="pes_muted">#5D6B86</color>
+    <color name="pes_on_dark">#FFFFFF</color>
+</resources>

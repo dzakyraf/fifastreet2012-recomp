@@ -1,0 +1,94 @@
+# What the Android build of the runtime needs on top of the common one.
+# Included from the top-level CMakeLists.txt when ANDROID is set, which the
+# NDK's toolchain file does; the Gradle build in android/ points its
+# externalNativeBuild at that same CMakeLists.txt, so this is the only place
+# the phone build differs.
+
+if(NOT CMAKE_ANDROID_ARCH_ABI STREQUAL "arm64-v8a")
+    message(FATAL_ERROR
+        "This port is arm64-v8a only. A 32-bit build cannot hold the guest's"
+        " 4 GiB address space, which the recompiled code reaches with a flat"
+        " 32-bit offset from one base pointer (runtime/guest_memory.cpp).")
+endif()
+
+target_compile_definitions(pes17 PRIVATE PES17_ANDROID=1)
+
+# 16 KB pages. Android 15 devices ship with them, and a library linked for 4 KB
+# will not load at all there. Nothing in the runtime assumes a page size --
+# everything asks sysconf -- so this is purely the linker's alignment.
+target_link_options(pes17 PRIVATE -Wl,-z,max-page-size=16384 -Wl,-z,common-page-size=16384)
+
+# Calls between the 600+ generated units never need the PLT: bind them at link
+# time (the Pinyon Shift port measured PLT stubs falling from 1.6% to 0.1% of cycles).
+target_link_options(pes17 PRIVATE -Wl,-Bsymbolic-functions)
+
+# The Vulkan entry points are pointers filled in while the process runs, from
+# whichever driver was opened, rather than symbols resolved against the
+# platform's libvulkan.so at load time. Only the files that call Vulkan see
+# the header, and they see it before anything else (runtime/gpu/vulkan/loader.h).
+file(GLOB PES17_VULKAN_SOURCES CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/runtime/gpu/vulkan/*.cpp")
+set_source_files_properties(${PES17_VULKAN_SOURCES} PROPERTIES
+    COMPILE_OPTIONS "-include;${CMAKE_SOURCE_DIR}/runtime/gpu/vulkan/loader.h")
+target_compile_definitions(pes17 PRIVATE PES17_VULKAN_DYNAMIC=1)
+
+# aaudio  the low-latency audio sink (runtime/android/audio.cpp)
+# android ANativeWindow and the asset manager (runtime/android/window.cpp)
+# log     __android_log_write, where the runtime's log goes (runtime/log.h)
+target_link_libraries(pes17 PRIVATE aaudio android log dl)
+
+# Symbols keep their default visibility. The crash handler resolves addresses
+# through dladdr (runtime/platform.cpp), and the recompiled functions are
+# named sub_XXXXXXXX: hidden, a guest stack trace would be a list of
+# addresses. The symbol table costs a few hundred kilobytes and pays for
+# itself the first time a player sends a log.
+
+# ---- the player's own Vulkan driver ---------------------------------------
+# libadrenotools loads a Turnip build the player imported, on a device that
+# has not been rooted, by giving the driver the linker namespace it expects.
+# It is not vendored here (android/fetch_deps.sh clones it); without it the
+# app still runs on the system's driver and says so.
+set(PES17_ADRENOTOOLS_DIR "${CMAKE_SOURCE_DIR}/third_party/libadrenotools")
+if(EXISTS "${PES17_ADRENOTOOLS_DIR}/CMakeLists.txt")
+    # Not EXCLUDE_FROM_ALL: its hook libraries have to be in the apk, and a
+    # target excluded from the default build is not something the Android
+    # plugin reliably packages. They are small.
+    add_subdirectory("${PES17_ADRENOTOOLS_DIR}" adrenotools)
+    target_link_libraries(pes17 PRIVATE adrenotools)
+    target_compile_definitions(pes17 PRIVATE PES17_HAVE_ADRENOTOOLS=1)
+    # Its two hook libraries are dlopened by the driver at run time, so they
+    # have to be in the apk beside libpes17.so. Building them as part of this
+    # build is what puts them there: the Gradle plugin packages every shared
+    # library this CMake project produces.
+    # main_hook and hook_impl are the loader itself; file_redirect_hook is
+    # what ADRENOTOOLS_DRIVER_FILE_REDIRECT needs (runtime/android/driver.cpp),
+    # and a driver that asks for it and cannot find it does not load.
+    foreach(hook main_hook hook_impl file_redirect_hook)
+        if(TARGET ${hook})
+            add_dependencies(pes17 ${hook})
+        endif()
+    endforeach()
+    message(STATUS "Custom Vulkan drivers: libadrenotools")
+else()
+    message(STATUS "Custom Vulkan drivers: off (run android/fetch_deps.sh to enable)")
+endif()
+
+# ---- code generation ------------------------------------------------------
+# The recompiled translation units are enormous -- tens of thousands of
+# functions -- and the phone's copy has to be small as well as quick.
+option(PES_FRAME_POINTER "Keep the frame pointer in Release builds (backtraces walk it)" ON)
+if(PES_FRAME_POINTER AND (CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo"))
+    # No frame pointer on the guest's own functions would make a crash report
+    # useless, and the unwinder is what every backtrace here goes through.
+    # Off, for a speed measurement: the crash and wait-stack backtraces go.
+    foreach(library ${PPC_MODULE_LIBRARIES})
+        target_compile_options(${library} PRIVATE -fno-omit-frame-pointer)
+    endforeach()
+    target_compile_options(pes17 PRIVATE -fno-omit-frame-pointer)
+endif()
+
+# The library is tens of megabytes of recompiled code and the debug info is
+# several times that. It is stripped out of the apk and kept beside the build
+# (android/app/build), which is what a crash report is read against.
+if(CMAKE_BUILD_TYPE STREQUAL "Release")
+    target_link_options(pes17 PRIVATE -Wl,--build-id=sha1)
+endif()

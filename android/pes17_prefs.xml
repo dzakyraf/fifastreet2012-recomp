@@ -1,0 +1,6 @@
+<?xml version='1.0' encoding='utf-8' standalone='yes' ?>
+<map>
+    <string name="gameDirectory">/storage/emulated/0/Android/data/com.pes2017.recomp.sp/files/game</string>
+    <boolean name="autoLaunch" value="true" />
+    <int name="textureBudgetMB" value="128" />
+</map>

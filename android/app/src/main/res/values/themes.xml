@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The launcher's screens: a white page, navy type, red controls. -->
+    <style name="Theme.PES17" parent="Theme.AppCompat.Light.NoActionBar">
+        <item name="android:windowBackground">@color/pes_page</item>
+        <item name="colorPrimary">@color/pes_navy</item>
+        <item name="colorPrimaryDark">@color/pes_navy</item>
+        <item name="colorAccent">@color/pes_red</item>
+        <item name="colorControlActivated">@color/pes_red</item>
+        <item name="android:textColorPrimary">@color/pes_text</item>
+        <item name="android:textColorSecondary">@color/pes_muted</item>
+        <item name="buttonStyle">@style/PanelButton</item>
+        <item name="android:buttonStyle">@style/PanelButton</item>
+    </style>
+
+    <!-- The run: black behind the surface, and the dark pad editor over it. -->
+    <style name="Theme.PES17.Game" parent="Theme.AppCompat.NoActionBar">
+        <item name="android:windowBackground">@android:color/black</item>
+        <item name="colorPrimary">#0E1A36</item>
+        <item name="colorPrimaryDark">#070D1C</item>
+        <item name="colorAccent">@color/pes_gold</item>
+        <item name="android:textColorPrimary">#EAF1FF</item>
+        <item name="android:textColorSecondary">#8FA0C2</item>
+    </style>
+
+    <!-- A settings panel's header row: a solid bar, as the PES 6 menus' header strips. -->
+    <style name="SectionHeading">
+        <item name="android:layout_marginTop">14dp</item>
+        <item name="android:background">@drawable/bg_section_bar</item>
+        <item name="android:paddingStart">10dp</item>
+        <item name="android:paddingTop">3dp</item>
+        <item name="android:paddingBottom">3dp</item>
+        <item name="android:textColor">@color/pes_on_dark</item>
+        <item name="android:textSize">13sp</item>
+        <item name="android:textStyle">bold|italic</item>
+        <item name="android:textAllCaps">true</item>
+        <item name="android:fontFamily">sans-serif-condensed</item>
+    </style>
+
+    <!-- One setting: a row with a hairline under it, label on the left. -->
+    <style name="SettingLabel">
+        <item name="android:layout_marginTop">2dp</item>
+        <item name="android:background">@drawable/bg_setting_row</item>
+        <item name="android:paddingStart">10dp</item>
+        <item name="android:paddingTop">7dp</item>
+        <item name="android:paddingBottom">5dp</item>
+        <item name="android:textColor">@color/pes_text</item>
+        <item name="android:textSize">14sp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:fontFamily">sans-serif-condensed</item>
+    </style>
+
+    <style name="SettingHint">
+        <item name="android:paddingStart">10dp</item>
+        <item name="android:paddingTop">2dp</item>
+        <item name="android:paddingBottom">4dp</item>
+        <item name="android:textColor">@color/pes_muted</item>
+        <item name="android:textSize">11sp</item>
+    </style>
+
+    <style name="SettingSwitch">
+        <item name="android:layout_marginTop">2dp</item>
+        <item name="android:background">@drawable/bg_setting_row</item>
+        <item name="android:paddingStart">10dp</item>
+        <item name="android:paddingEnd">6dp</item>
+        <item name="android:paddingTop">7dp</item>
+        <item name="android:paddingBottom">5dp</item>
+        <item name="android:textColor">@color/pes_text</item>
+        <item name="android:textSize">14sp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:fontFamily">sans-serif-condensed</item>
+    </style>
+
+    <!-- The main menu's entries: big italic capitals, left-aligned, as PES 6's. -->
+    <style name="MenuEntry">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">0dp</item>
+        <item name="android:layout_weight">1</item>
+        <item name="android:minHeight">0dp</item>
+        <item name="android:background">@android:color/transparent</item>
+        <item name="android:gravity">start|center_vertical</item>
+        <item name="android:paddingStart">6dp</item>
+        <item name="android:drawablePadding">8dp</item>
+        <item name="android:drawableStart">@drawable/ic_menu_cursor_space</item>
+        <item name="android:textColor">@color/pes_navy</item>
+        <item name="android:textSize">17sp</item>
+        <item name="android:textStyle">bold|italic</item>
+        <item name="android:textAllCaps">true</item>
+        <item name="android:fontFamily">sans-serif-condensed</item>
+        <item name="android:letterSpacing">0.04</item>
+        <item name="android:stateListAnimator">@null</item>
+    </style>
+
+    <!-- A card holding one group of settings (Display, Frame rate, ...). -->
+    <style name="SettingGroup">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginTop">4dp</item>
+        <item name="android:background">@drawable/bg_setting_group</item>
+        <item name="android:orientation">vertical</item>
+        <item name="android:padding">4dp</item>
+    </style>
+
+    <style name="TabEntry">
+        <item name="android:layout_width">0dp</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_weight">1</item>
+        <item name="android:minHeight">34dp</item>
+        <item name="android:background">@android:color/transparent</item>
+        <item name="android:gravity">center</item>
+        <item name="android:textColor">@color/pes_on_dark</item>
+        <item name="android:textSize">12sp</item>
+        <item name="android:textStyle">bold|italic</item>
+        <item name="android:textAllCaps">true</item>
+        <item name="android:fontFamily">sans-serif-condensed</item>
+        <item name="android:letterSpacing">0.06</item>
+        <item name="android:stateListAnimator">@null</item>
+    </style>
+
+    <!-- BACK: gold italic capitals with an arrow, on the strip's navy. -->
+    <style name="BackButton">
+        <item name="android:background">@android:color/transparent</item>
+        <item name="android:minHeight">36dp</item>
+        <item name="android:minWidth">0dp</item>
+        <item name="android:paddingStart">10dp</item>
+        <item name="android:paddingEnd">14dp</item>
+        <item name="android:textColor">@color/pes_gold</item>
+        <item name="android:textSize">14sp</item>
+        <item name="android:textStyle">bold|italic</item>
+        <item name="android:textAllCaps">true</item>
+        <item name="android:fontFamily">sans-serif-condensed</item>
+        <item name="android:letterSpacing">0.06</item>
+        <item name="android:stateListAnimator">@null</item>
+    </style>
+
+    <style name="PanelButton" parent="Widget.AppCompat.Button">
+        <item name="android:background">@drawable/bg_button_action</item>
+        <item name="android:textColor">@color/pes_on_dark</item>
+        <item name="android:textStyle">bold|italic</item>
+        <item name="android:fontFamily">sans-serif-condensed</item>
+        <item name="android:minHeight">40dp</item>
+        <item name="android:stateListAnimator">@null</item>
+    </style>
+</resources>

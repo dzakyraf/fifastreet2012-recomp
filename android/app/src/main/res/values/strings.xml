@@ -1,0 +1,345 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- app_name is set in build.gradle.kts. -->
+    <string name="check_updates">CHECK FOR UPDATES</string>
+    <string name="quit_launcher">QUIT</string>
+    <string name="up_to_date">This is the newest version.</string>
+
+    <!-- launcher -->
+    <string name="graphics_driver">Graphics driver</string>
+    <string name="settings">Settings</string>
+    <string name="view_log">Log</string>
+    <string name="close">Close</string>
+    <string name="cancel">Cancel</string>
+    <string name="reset">Reset</string>
+    <string name="qg_menu">Graphics &amp; performance</string>
+    <string name="qg_title">Graphics &amp; performance</string>
+    <string name="qg_preset">Preset</string>
+    <string name="qg_scene">Scene resolution: %1$d%%</string>
+    <string name="qg_scale">Internal resolution: %1$dx (1x = 1280x720; 2x or 3x for powerful GPUs)</string>
+    <string name="qg_fps">Frame rate limit: %1$d</string>
+    <string name="qg_msaa">Anti-aliasing (MSAA)</string>
+    <string name="qg_fsr">FSR upscaler</string>
+    <string name="qg_heat">Lower the picture as the phone heats</string>
+    <string name="qg_crowd">Crowd</string>
+    <string name="qg_lowmem">Low memory mode (no shadow buffer)</string>
+    <string name="qg_apply">Apply &amp; restart</string>
+    <string name="qg_note">The picture settings are read as a match starts, so applying them restarts the game (about as long as starting it). Your saves are kept.</string>
+    <string name="done">Done</string>
+    <string name="share">Share</string>
+    <string name="status_library_missing">The runtime could not be loaded:\n%1$s</string>
+    <string name="footer">%1$s     ●     Driver: %2$s     ●     Build %3$s, %4$s     ●     UNOFFICIAL FAN PORT. NOT AFFILIATED WITH KONAMI. BRING YOUR OWN COPY.</string>
+
+    <!-- installing -->
+    <string name="choose_source">Browse the phone\u2019s storage</string>
+    <string name="begin_install">Install</string>
+    <string name="no_source">Nothing chosen yet.</string>
+    <string name="chosen">Installing from:\n%1$s</string>
+    <string name="installing">%1$s  (%2$d%%)</string>
+    <string name="install_done">The game files are installed.</string>
+    <string name="install_failed">The install did not finish:\n%1$s</string>
+    <string name="install_cancelled">Cancelled. What was copied is kept, so starting again carries on from there.</string>
+    <string name="install_running_warning">The install is still running. Leaving now stops it; it can be carried on later.</string>
+    <string name="no_space">There is not enough free space: %1$s free, about 7 GB needed.</string>
+
+    <string name="unknown_reason">no reason given</string>
+    <string name="last_crash">The app stopped last time</string>
+    <string name="log_empty">Nothing logged yet.</string>
+
+    <!-- the log screen is a summary; the log itself is a button away -->
+    <string name="log_none">No errors or warnings in this run.</string>
+    <string name="log_counts">%1$d errors, %2$d warnings</string>
+    <string name="log_where">Where it got to:</string>
+    <string name="log_stopped">The last run stopped:</string>
+    <string name="log_more">and %1$d more, counted but not shown</string>
+    <string name="log_everything">The whole log</string>
+    <string name="log_share_note">Sharing sends the whole log, not this summary.</string>
+
+    <!-- bringing a file in through the system picker -->
+    <string name="pick_with_files">Choose with the Files app</string>
+    <string name="import_file">Import</string>
+    <string name="copying_file">Copying %1$s (%2$d%%)</string>
+    <string name="import_explained">The Files app hands over a document rather than a path, so the file is copied into this app first: %1$s now, and about 7 GB again for the installed game. %2$s is free.\n\nIf space is tight, use “Browse the phone’s storage” instead — it reads the file where it lies.</string>
+    <string name="import_explained_unknown">The Files app hands over a document rather than a path, so the file is copied into this app first. A disc image is several gigabytes, and the installed game needs about 7 GB more.\n\nIf space is tight, use “Browse the phone’s storage” instead — it reads the file where it lies.</string>
+    <string name="copying">Copying in: %1$s</string>
+
+    <!-- the file browser -->
+    <string name="up_one">..  (up one)</string>
+
+    <!-- the driver screen -->
+    <string name="driver_hint">Adreno phones can run Mesa\'s Turnip driver, which is often much quicker than the one the phone shipped with, and sometimes renders things the shipped one gets wrong. Import the driver\'s zip archive as it was downloaded; it is unpacked into the app\'s own storage.</string>
+    <string name="import_driver">Import a driver (.zip)</string>
+    <string name="driver_system">The phone\'s own driver</string>
+    <string name="driver_in_use">In use: %1$s</string>
+    <string name="driver_imported">Imported %1$s.</string>
+    <string name="driver_bad_zip">That archive does not look like a driver: it has no meta.json naming the library inside it.</string>
+    <string name="driver_not_arm64">That driver is not for this phone (arm64 is needed).</string>
+    <string name="download_driver">Download a driver</string>
+    <string name="driver_source_recommended">Recommended for this GPU (Turnip, K11MCH1 / StevenMXZ)</string>
+    <string name="driver_source_purple">MrPurple Turnip (unified, Android 11+)</string>
+    <string name="driver_downloading">Downloading the driver…</string>
+    <string name="driver_none_for_gpu">No downloadable driver for this phone\'s GPU: only Adreno 6xx, 7xx and 8xx have one.</string>
+    <string name="driver_download_failed">The download failed. Check the connection and try again.</string>
+    <string name="driver_downloaded">Downloaded %1$s and set it as the driver.</string>
+    <string name="driver_remove">Remove</string>
+    <string name="driver_removed">Removed.</string>
+    <string name="driver_api">Vulkan %1$s, for Android API %2$d and later</string>
+
+    <!-- settings -->
+    <string name="section_storage">Storage</string>
+    <string name="storage_computing">Measuring…</string>
+    <string name="back">◀  Back</string>
+    <string name="saves_files">Saves</string>
+    <string name="section_saves">Save data</string>
+    <string name="saves_summary">%1$d save packages in %2$s: %3$s</string>
+    <string name="saves_none">No saves yet in %1$s.</string>
+    <string name="backup_saves">Back up saves…</string>
+    <string name="restore_saves">Restore saves…</string>
+    <string name="saves_backup_hint">Master League, Become a Legend, edit data and settings, all in one zip you can keep anywhere (Downloads, Drive). A copy is also taken automatically each time you kick off from the launcher; the last 5 are kept. Restoring keeps your current saves as saves.before-restore-… beside them.</string>
+    <string name="restore_from_file">From a backup file…</string>
+    <string name="restore_auto_entry">Automatic: %1$s</string>
+    <string name="restore_confirm_title">Replace your saves?</string>
+    <string name="restore_confirm">The saves now on this phone are set aside (not deleted) and the backup\'s take their place.</string>
+    <string name="restore">Restore</string>
+    <string name="backup_done">Backed up %1$d files.</string>
+    <string name="restore_done">Restored %1$d files.</string>
+    <string name="backup_failed">The backup failed: %1$s</string>
+    <string name="restore_failed">The restore failed: %1$s</string>
+    <string name="restore_game_running">Quit the game first: its saves cannot be replaced while it is running.</string>
+    <string name="storage_line">%1$s: %2$s</string>
+    <string name="clear_shaders">Clear shader cache</string>
+    <string name="clear_logs">Clear logs</string>
+    <string name="shaders_cleared">Shader cache cleared. Shaders rebuild as you play.</string>
+    <string name="logs_cleared">Logs cleared.</string>
+
+    <!-- split-screen (a physical controller means a second player) -->
+
+    <!-- shader prewarming -->
+
+    <!-- network play -->
+
+    <!-- self-update -->
+    <string name="update_title">Update available: %1$s</string>
+    <string name="update_message">This install is build %1$d, the release carries build %2$d.\n\nOpen the release page and install the APK over this one — no uninstall, no data loss.</string>
+    <string name="update_download">Download &amp; install</string>
+    <string name="update_downloading">Downloading update…</string>
+    <string name="update_failed">The download failed. Open the release page instead.</string>
+    <string name="open_page">Release page</string>
+    <string name="skip_version">Skip this version</string>
+
+    <!-- in the game -->
+    <string name="menu">Menu</string>
+    <string name="paused">Paused</string>
+    <string name="resume">Carry on</string>
+    <string name="edit_controls">Edit controls</string>
+    <string name="edit_controls_short">Edit</string>
+    <string name="hide_touch_controls">Hide the on-screen controls</string>
+    <string name="show_touch_controls">Show the on-screen controls</string>
+    <string name="disable_gamepad">Ignore physical controllers</string>
+    <string name="enable_gamepad">Use physical controllers</string>
+    <string name="quit">Quit</string>
+    <string name="quit_explained">The game ends now. Anything the game itself has not saved is lost.</string>
+    <string name="cannot_start">The game could not start</string>
+    <string name="error_library">The runtime library would not load:\n%1$s</string>
+    <string name="error_not_installed">The game files are not installed. Install them from the launcher first.</string>
+    <string name="error_start">The runtime would not start. The log has the details.</string>
+
+    <!-- the run's own notification, which is there so the process is not the
+         first thing the system reclaims (GameService.kt) -->
+    <string name="run_channel">A game is running</string>
+    <string name="run_working">Running. Leaving the app does not end the game.</string>
+
+    <!-- editing the pad -->
+    <string name="edit_pick_one">Touch a control to pick it up. Drag to move it, pinch to resize.</string>
+    <string name="edit_selected">%1$s — drag to move, pinch to resize</string>
+    <string name="edit_hint">Hidden controls are shown faintly here so they can be turned back on.</string>
+    <string name="size">Size</string>
+    <string name="opacity">Opacity</string>
+    <string name="shown">Shown</string>
+    <string name="toggle">Stays down</string>
+    <string name="snap">Snap</string>
+    <string name="reset_one">Reset this</string>
+    <string name="reset_all">Reset all</string>
+    <string name="reset_all_explained">Every control goes back where it started, at its original size.</string>
+
+    <!-- identity -->
+    <string name="wordmark">PES17 Recompiled for Android</string>
+    <string name="wordmark_year">2017</string>
+    <string name="disclaimer">UNOFFICIAL FAN PORT. NOT AFFILIATED WITH KONAMI. BRING YOUR OWN COPY.</string>
+    <string name="detail_default_title">MAIN MENU</string>
+    <string name="detail_default_text">Pick an entry: its details show here, and choosing it acts at once.</string>
+
+    <string name="version_tag">%1$s \u00b7 build %2$d \u00b7 EUROPE</string>
+    <string name="install_and_play">INSTALL &amp; KICK OFF</string>
+
+    <!-- main menu entries -->
+    <string name="play">KICK OFF</string>
+    <string name="entry_select_folder">SELECT GAME FOLDER</string>
+    <string name="entry_install">INSTALL FROM DISC IMAGE</string>
+    <string name="entry_settings">SETTINGS</string>
+    <string name="direct_launch">Kick off straight away when the app opens</string>
+    <string name="select_folder_hint">The app first looks for the game on this phone by itself. If it cannot find it, point it at the folder that holds your PES 2017 files (default.xex and the .cpk archives). If Android has not yet let the app read that part of the storage, it asks first.</string>
+    <string name="settings_hint">Picture, performance, controls and game files for this port.</string>
+    <string name="install_game">Install the game files</string>
+    <string name="install_hint">Point this at a disc image (.iso) of your own PES 2017 copy, or at the folder its files were extracted to (default.xex and the .cpk archives). Only the files the game needs are copied into the app\'s own storage; about 7 GB of free space is wanted.</string>
+    <string name="status_not_installed">No game folder chosen yet.\n\nThis app contains no game data. Choose the folder with your own copy of PES 2017, or install from a disc image.</string>
+    <string name="status_ready">Match ready.\nGame folder: %1$s</string>
+    <string name="status_ready_auto">Match ready. The game files were found on this phone:\n%1$s</string>
+    <string name="status_folder_missing">The chosen game folder is gone or unreadable:\n%1$s\n\nChoose it again.</string>
+    <string name="status_needs_access">The game folder is set, but Android has not given the app access to read it:\n%1$s</string>
+
+    <!-- choosing the game folder -->
+    <string name="pick_folder">Copy an extracted game folder (no permission needed)</string>
+    <string name="folder_title">Game folder</string>
+    <string name="folder_no_xex">That folder has no default.xex. Pick the folder that holds default.xex and the .cpk files.</string>
+    <string name="folder_found_inside">Found the game one level down:\n%1$s</string>
+    <string name="folder_wrong_game">This default.xex is not the PES 2017 (Europe) executable this app was recompiled from. It may not run.</string>
+    <string name="folder_use_anyway">Use anyway</string>
+    <string name="folder_use_here">Use this folder</string>
+    <string name="folder_set">The game will run from:\n%1$s\n\nSaves and caches are kept in its parent folder.</string>
+    <string name="folder_unreadable_path">Android hands over this folder as a document, not a path, so the game cannot be run from where it is.</string>
+    <string name="folder_import_explained">Copy %1$s of game files (default.xex, the .cpk archives) into the app? %2$s is free.</string>
+    <string name="access_title">Storage access needed</string>
+    <string name="access_explained">The game reads its files by path, and Android only lets an app do that outside its own folder once you allow \u201cAll files access\u201d. Allow it in the next screen, then come back: the folder you chose is remembered.\n\nOr copy the files into the app instead; that needs no permission but uses the space twice.</string>
+    <string name="allow_storage">Allow storage access</string>
+    <string name="copy_instead">Copy into the app</string>
+    <string name="storage_granted">Storage access: allowed</string>
+    <string name="storage_not_granted">Storage access: not allowed (needed to run from a folder outside the app)</string>
+    <string name="storage_explained">Android only lets an app read files outside its own folder once you allow it. Without that, put the disc image in Android/data/%1$s/files and pick it from there.</string>
+    <string name="use_this_folder">Use this folder</string>
+
+    <!-- settings tabs and sections -->
+    <string name="tab_graphics">GRAPHICS &amp; PERFORMANCE</string>
+    <string name="tab_performance">PERFORMANCE</string>
+    <string name="tab_controls">CONTROLS &amp; SOUND</string>
+    <string name="tab_advanced">ADVANCED</string>
+    <string name="tab_files">GAME FILES</string>
+    <string name="section_preset">Quality preset</string>
+    <string name="section_display">Display</string>
+    <string name="section_image_quality">Image quality</string>
+    <string name="section_frame_rate">Frame rate</string>
+    <string name="section_thermal">Heat &amp; battery</string>
+    <string name="section_rendering">Rendering</string>
+    <string name="section_memory">Memory &amp; loading</string>
+    <string name="section_testing">Testing</string>
+    <string name="section_developer">Developer</string>
+    <string name="developer_tools">Developer tools</string>
+    <string name="developer_tools_hint">Shows the debug-only tools in a match: the CAPTURE button, the REC MACRO button beside Menu, macro play in the pause menu, the HUD\u2019s detail card and console, and the test options below. Leave off to play.</string>
+    <string name="section_hud">Performance HUD</string>
+    <string name="hud_off">Off</string>
+    <string name="hud_minimal">Minimal</string>
+    <string name="hud_normal">Normal</string>
+    <string name="hud_complete">Complete</string>
+    <string name="hud_level_hint">The readout in the top-left corner of a match. Minimal: frames per second. Normal: adds frame time and temperature. Complete: adds CPU, memory and textures on a second line. Also in a match: pause and choose \u201cPerformance HUD\u201d.</string>
+    <string name="hud_menu">Performance HUD</string>
+    <string name="button_style">Button labels</string>
+    <string name="button_style_playstation">PlayStation (\u2715 \u25CB \u25A1 \u25B3)</string>
+    <string name="button_style_xbox">Xbox (A B X Y)</string>
+    <string name="arrange_controls">Arrange on-screen controls</string>
+    <string name="arrange_controls_hint">Drag a control to move it, pinch it or use the size slider to resize it, and hide the ones you do not use. A control dropped on another steps aside. Also in a match: pause and choose \u201cEdit controls\u201d.</string>
+    <string name="arrange_hint">Touch a control to pick it up</string>
+    <string name="advanced_warning">For tinkering and troubleshooting. The defaults suit most phones; the Graphics and Performance tabs cover the usual changes.</string>
+    <string name="settings_help_strip">Every change is kept the moment it is made, and takes effect when the next match starts. Press Back to return to the menu.</string>
+    <string name="preset_label">Preset: %1$s</string>
+    <string name="preset_low">Low</string>
+    <string name="preset_medium">Medium</string>
+    <string name="preset_high">High</string>
+    <string name="preset_custom">Custom</string>
+    <string name="preset_detected">This phone looks like %1$s (%2$s; %3$s, %4$d fast cores at %5$d MHz, %6$.1f GB). A preset sets render quality, the heat and GPU-load rules, multisampling, FSR, the frame-rate limit and low-memory mode; change any of them afterwards and the preset reads Custom.</string>
+    <string name="preset_gpu_unknown">GPU unknown</string>
+    <string name="section_sound">Sound</string>
+    <string name="section_controls">Controls</string>
+    <string name="section_files">Game files</string>
+    <string name="resolution">Display resolution: %1$d%%</string>
+    <string name="resolution_hint">How many pixels are drawn on the screen, as a share of it. The display scales the result up. PES draws at a fixed 1280\u00d7720, so this mostly trades sharpness for battery.</string>
+    <string name="render_scale">Internal render multiplier: %1$dx</string>
+    <string name="render_scale_hint">Draws the match at 2x or 3x the console\u2019s 1280\u00d7720 (PES17_SCALE). Needs a lot of GPU; leave at 1x unless the phone has room to spare.</string>
+    <string name="msaa">Smooth edges (multisampling)</string>
+    <string name="msaa_hint">Keeps thin pitch lines from breaking into dashes. Cheap on most phones; turn it off if the match stutters.</string>
+    <string name="prefer_60">Lock display to 60 Hz</string>
+    <string name="prefer_60_hint">The console\u2019s frame is a 60 Hz frame. Locking avoids uneven pacing and saves battery on 90/120 Hz screens.</string>
+    <string name="scene_scale">Match render quality: %1$d%%</string>
+    <string name="ball_scale">Ball size: %1$d%%</string>
+    <string name="ball_scale_hint">Draws the match ball this much larger so it is easier to follow on a small screen (PES17_BALL_SCALE). 100% is the original size.</string>
+    <string name="scene_scale_hint">How large the 3D scene is drawn before it is stretched to the frame (PES17_SCENE_SCALE). 75% is the default: about 44% fewer pixels for a picture most players cannot tell apart. Go to 100% on a strong phone.</string>
+    <string name="heat_scale">Lower quality when hot</string>
+    <string name="heat_scale_hint">Match render quality above becomes the most the picture is drawn at. As Android reports the phone heating up (moderate, severe, critical) the picture is lowered, down to 50%, before the GPU is throttled, and raised again as it cools (PES17_HEAT_SCALE). Steps are held a few seconds; one shows as the scene being redrawn for a moment.</string>
+    <string name="load_scale">Lower quality when the GPU falls behind</string>
+    <string name="load_scale_hint">Steps the picture down when the render passes take too long for the frame and back up when there is room (PES17_LOAD_SCALE). It only sees GPU pass time, which on the Snapdragon 865 was not what made a slow match slow, so it rarely acts there. Experimental.</string>
+    <string name="perf_hint">System performance hint</string>
+    <string name="perf_hint_hint">Tells Android how long each frame took so it can raise or lower the CPU and GPU clock (PES17_HINT). Does nothing on a phone that refuses it, such as the Snapdragon 865 on Android 13; turn it off if a phone runs hotter with it.</string>
+    <string name="crowd">Stadium crowd</string>
+    <string name="crowd_hint">Off leaves the stands empty and spares the renderer and the GPU the crowd\u2019s drawing, which keeps the phone a little cooler in a match. The game still animates it. Takes effect the next time the game starts.</string>
+    <string name="fsr">Sharper upscaling (FSR)</string>
+    <string name="fsr_hint">Uses an AMD FSR upscale and sharpen pass instead of a plain stretch. Costs a few frames on a hot phone.</string>
+    <string name="fsr_sharp">Sharpness: %1$.1f</string>
+    <string name="widescreen">Widescreen (fill the screen)</string>
+    <string name="widescreen_hint">Widens the game\'s camera to the phone\'s shape and fills the whole screen instead of showing black bars at the sides (PES17_ASPECT). Menus and the score bar are stretched sideways. Takes effect on the next start.</string>
+    <string name="fps_limit">Frame rate limit: %1$d FPS</string>
+    <string name="fps_limit_off">Frame rate limit: off (60 FPS)</string>
+    <string name="fps_limit_hint">Takes the match off the 60 Hz pacing and limits it to this many frames a second (PES17_FPS_LIMIT). Lower is cooler and longer-lasting. On a 60 Hz screen 30 gives the most even motion; 35 to 55 can judder.</string>
+    <string name="low_memory">Low-memory mode</string>
+    <string name="low_memory_hint">Skips the large vertex shadow buffer (PES17_NO_SHADOW). Use it on 6 GB phones or less, or if the match is killed in the background.</string>
+    <string name="texture_budget_auto">Texture memory: chosen for this phone</string>
+    <string name="texture_budget">Texture memory: %1$d MB</string>
+    <string name="texture_hint">How much the texture cache may hold before it lets go of what has not been drawn lately. Left alone, the runtime picks a figure from this phone\u2019s memory.</string>
+    <string name="prewarm_all">Compile all shaders at boot</string>
+    <string name="prewarm_all_hint">Compiles every recorded pipeline before the title screen instead of during play. Boot takes minutes on a cold cache, but kick-off is free of shader stutter afterwards.</string>
+    <string name="show_stats">Show FPS counter</string>
+    <string name="hide_stats">Hide frames per second</string>
+    <string name="audio_on">Sound</string>
+    <string name="touch_controls">On-screen controls</string>
+    <string name="use_gamepad">Use a physical controller</string>
+    <string name="gamepad_p2">Physical controller is player 2 (testing)</string>
+    <string name="gamepad_p2_hint">Touch controls stay player 1; the first physical controller drives player 2. Takes effect when a match is started.</string>
+    <string name="gamepad_hint">Turn off to ignore controllers entirely. Some phones report an accessory as a gamepad with a stick that is not centred, which makes a player run on his own.</string>
+    <string name="vibration">Vibration</string>
+    <string name="edit_controls_where">The on-screen pad is edited in the match: pause and choose \u201cEdit controls\u201d.</string>
+    <string name="forget_install">Forget the game folder</string>
+    <string name="forget_explained">The files stay on the phone; the app simply stops using them, and a new folder can be chosen. If the files are still in a place the app searches, it will find them again on its own.</string>
+    <string name="paths_line">Game folder:\n%1$s</string>
+    <string name="paths_none">No game folder chosen yet.</string>
+
+    <!-- controller macros -->
+    <string name="macro_record">Record controller macro</string>
+    <string name="macro_stop_record">Stop recording</string>
+    <string name="macro_play">Play macro</string>
+    <string name="macro_stop_play">Stop macro</string>
+    <string name="macro_recording">Recording the controller\u2026 press STOP REC to finish.</string>
+    <string name="macro_saved">Saved %1$d events as \u201c%2$s\u201d.</string>
+    <string name="macro_nothing">Nothing was recorded: press something on the controller first.</string>
+    <string name="macro_none">No macros recorded yet.</string>
+    <string name="macro_done">Macro: %1$s</string>
+
+    <string name="macro_name_title">Name this macro</string>
+    <string name="macro_name_hint">Macro name</string>
+    <string name="macro_existing">Already saved: %1$s</string>
+    <string name="macro_save">Save</string>
+
+    <!-- capture button -->
+    <string name="capture_started">Capture started: play, and press STOP when the problem has happened.</string>
+    <string name="capture_stop_title">Save the capture</string>
+    <string name="capture_name_hint">Name (for example flicker-kickoff)</string>
+    <string name="capture_note_hint">What went wrong?</string>
+    <string name="capture_save">Save</string>
+    <string name="capture_discard">Discard</string>
+    <string name="capture_saving">Saving\u2026</string>
+    <string name="captures_title">Captures</string>
+    <string name="captures_open">Manage captures</string>
+    <string name="captures_hint">Tap a capture to share it, save it to your Downloads folder, or delete it. Long-press deletes. Each one is a folder of logs, settings, engine and display reports and screen frames.</string>
+    <string name="captures_none">No captures yet. Turn on Settings > Advanced > Developer tools, then press CAPTURE in a match.</string>
+    <string name="captures_summary">%1$d captures, %2$s</string>
+    <string name="captures_row">%1$s, %2$d files</string>
+    <string name="captures_save_folder">Save to Downloads</string>
+    <string name="captures_saved_to">Saved to %1$s</string>
+    <string name="captures_save_failed">Could not make or save the zip.</string>
+    <string name="captures_delete">Delete</string>
+    <string name="captures_delete_one">Delete this capture from the phone?</string>
+    <string name="captures_clear_all">Delete all captures</string>
+    <string name="captures_clear_all_body">Every capture on the phone will be deleted. Ones you have shared or saved elsewhere are not touched.</string>
+    <string name="capture_saved_title">Capture saved</string>
+    <string name="capture_saved_body">Saved as captures/%1$s. Share it to send everything in the folder (log, settings, engine and display report, screen frames) as one zip.</string>
+    <string name="capture_share">Share</string>
+    <string name="capture_saved">Saved: captures/%1$s. Tell Claude its name.</string>
+    <string name="capture_failed">Capture failed: %1$s</string>
+</resources>
