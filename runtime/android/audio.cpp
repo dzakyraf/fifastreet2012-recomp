@@ -39,6 +39,10 @@ namespace
     // mixer's thread was silence spliced into the sound -- the crackle. A dry ring now waits
     // for a cushion rather than playing each frame as it lands.
     constexpr uint32_t kPrimeSamples = 4 * kFrameSamples;
+    // And at most this much behind: the mixer can fill the ring before the device starts pulling
+    // (on the POCO X7 Pro it sat at 150 ms from the start, the sound that far behind the picture
+    // and overflowing now and then). Past it the callback skips to kPrimeSamples in one jump.
+    constexpr uint32_t kMaxQueuedSamples = 8 * kFrameSamples;
 
     // The ring holds stereo samples already downmixed, so the callback does
     // nothing but copy (and resample, if the device insisted on another rate).
@@ -106,6 +110,7 @@ namespace
     std::atomic<uint64_t> g_underruns{ 0 };
     bool g_primed = false;            // the callback's: playing, not waiting for a cushion
     uint32_t g_deviceRate = kGuestRate;
+    std::atomic<uint64_t> g_trims{ 0 };
 
     // Where the resampler is between two ring samples, when the device does
     // not run at 48 kHz. Touched only by the callback.
@@ -133,6 +138,18 @@ namespace
                 remaining -= chunk;
             }
             return AAUDIO_CALLBACK_RESULT_CONTINUE;
+        }
+
+        if (const uint32_t held = g_ring.Held(); held > kMaxQueuedSamples + wanted)
+        {
+            float discard[64 * kOutChannels];
+            for (uint32_t excess = held - kPrimeSamples - wanted; excess > 0;)
+            {
+                const uint32_t got = g_ring.Pop(discard, std::min(excess, 64u));
+                if (!got) break;
+                excess -= got;
+            }
+            g_trims.fetch_add(1, std::memory_order_relaxed);
         }
 
         if (!g_primed)
@@ -352,9 +369,10 @@ void android::audio::Write(const float* samples, uint32_t frames)
         const int32_t xruns = g_stream ? AAudioStream_getXRunCount(g_stream) : -1;
         const int32_t buffer = g_stream ? AAudioStream_getBufferSizeInFrames(g_stream) : 0;
         LOGI("audio: %llu underruns in the last 10 s, %d device xruns in all (buffer %d frames),"
-             " %llu frames dropped in all, %u ms queued, %llu samples clipped",
+             " %llu frames dropped and %llu trims in all, %u ms queued, %llu samples clipped",
              (unsigned long long)(underruns - lastUnderruns), int(xruns), int(buffer),
-             (unsigned long long)dropped, g_ring.Held() * 1000 / kGuestRate, (unsigned long long)clipped);
+             (unsigned long long)dropped, (unsigned long long)g_trims.load(),
+             g_ring.Held() * 1000 / kGuestRate, (unsigned long long)clipped);
         lastUnderruns = underruns;
         clipped = 0;
     }
