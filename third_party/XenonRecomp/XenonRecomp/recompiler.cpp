@@ -2115,23 +2115,35 @@ bool Recompiler::Recompile(
         // NOTE: handling vector reversal here too
         printSetFlushMode(true);
 
+        // The half-float packs write 16-bit lanes of the destination while later components still read
+        // 32-bit lanes of the source; when both are the same register that corrupts the source, so
+        // read a copy.
+        const bool packAliased = insn.operands[0] == insn.operands[1];
+        std::string packSource = v(insn.operands[1]);
+        if (packAliased)
+        {
+            println("\t{{");
+            println("\tconst auto vector_pack_source = {};", packSource);
+            packSource = "vector_pack_source";
+        }
+
         // float16_2 and float16_4 differ only in how many components they take
         // and where those land, so the conversion itself lives in one place.
         auto packHalf = [&](size_t dest, size_t source)
         {
             // Strip sign from source
-            println("\t{}.u32 = ({}.u32[{}]&0x7FFFFFFF);", temp(), v(insn.operands[1]), source);
+            println("\t{}.u32 = ({}.u32[{}]&0x7FFFFFFF);", temp(), packSource, source);
             // If |source| is > 65504, clamp output to 0x7FFF, else save 8 exponent bits
-            println("\t{0}.u8[0] = ({1}.f32 != {1}.f32) || ({1}.f32 > 65504.0f) ? 0xFF : (({2}.u32[{3}]&0x7f800000)>>23);", vTemp(), temp(), v(insn.operands[1]), source);
+            println("\t{0}.u8[0] = ({1}.f32 != {1}.f32) || ({1}.f32 > 65504.0f) ? 0xFF : (({2}.u32[{3}]&0x7f800000)>>23);", vTemp(), temp(), packSource, source);
             // If 8 exponent bits were saved, it can only be 0x8E at most
             // If saved, save first 10 bits of mantissa
-            println("\t{}.u16 = {}.u8[0] != 0xFF ? (({}.u32[{}]&0x7FE000)>>13) : 0x0;", temp(), vTemp(), v(insn.operands[1]), source);
+            println("\t{}.u16 = {}.u8[0] != 0xFF ? (({}.u32[{}]&0x7FE000)>>13) : 0x0;", temp(), vTemp(), packSource, source);
             // If saved and > 127-15, exponent is converted from 8 to 5-bit by subtracting 0x70
             // If saved but not > 127-15, clamp exponent at 0, add 0x400 to mantissa and shift right by (0x71-exponent)
             // If right shift is greater than 31 bits, manually clamp mantissa to 0 or else the output of the shift will be wrong
             println("\t{0}.u16[{1}] = {2}.u8[0] != 0xFF ? ({2}.u8[0] > 0x70 ? ((({2}.u8[0]-0x70)<<10)+{3}.u16) : (0x71-{2}.u8[0] > 31 ? 0x0 : ((0x400+{3}.u16)>>(0x71-{2}.u8[0])))) : 0x7FFF;", v(insn.operands[0]), dest, vTemp(), temp());
             // Add back original sign
-            println("\t{}.u16[{}] |= (({}.u32[{}]&0x80000000)>>16);", v(insn.operands[0]), dest, v(insn.operands[1]), source);
+            println("\t{}.u16[{}] |= (({}.u32[{}]&0x80000000)>>16);", v(insn.operands[0]), dest, packSource, source);
         };
 
         switch (insn.operands[2])
@@ -2190,6 +2202,8 @@ bool Recompiler::Recompile(
             println("\t__builtin_debugtrap();");
             break;
         }
+        if (packAliased)
+            println("\t}}");
         break;
     }
 
