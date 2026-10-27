@@ -16,6 +16,7 @@
 #include "../atomic_ref.h"
 
 #include <atomic>
+#include <cstdlib>
 #include <cstring>
 #include <mutex>
 #include <thread>
@@ -181,8 +182,29 @@ PPC_FUNC(__imp__RtlEnterCriticalSection)
         }
     }
     if (TakeIfOwned(cs, me)) return;
-    for (uint32_t spin = *GuestPtr<uint8_t>(cs + 1) * 256u; spin; spin--)
-        if (CompareExchange(cs + kLockCount, uint32_t(-1), 0)) { Own(cs, me); return; }
+    // The title's spin counts (up to 65k) were meant for a hardware thread of its own; on a phone every
+    // guest thread shares three performance cores, so a long spin takes the owner's time. Look before
+    // the locked exchange, pause between tries, and give up sooner (ReStreet does the same).
+    // PES17_CS_SPIN=0 keeps the title's count and a plain exchange, for A/B runs.
+    static const bool bounded = [] { const char* v = std::getenv("PES17_CS_SPIN"); return !(v && v[0] == '0'); }();
+    uint32_t spin = *GuestPtr<uint8_t>(cs + 1) * 256u;
+    if (bounded)
+    {
+        const volatile uint32_t* const lockCount = reinterpret_cast<const volatile uint32_t*>(guest::Base() + cs + kLockCount);
+        for (spin = std::min<uint32_t>(spin, 2048); spin; spin--)
+        {
+            // -1 is every bit set, so it reads the same byte-swapped.
+            if (*lockCount == 0xFFFFFFFFu && CompareExchange(cs + kLockCount, uint32_t(-1), 0)) { Own(cs, me); return; }
+#if defined(__aarch64__)
+            __builtin_arm_yield();
+#elif defined(__x86_64__)
+            __builtin_ia32_pause();
+#endif
+        }
+    }
+    else
+        for (; spin; spin--)
+            if (CompareExchange(cs + kLockCount, uint32_t(-1), 0)) { Own(cs, me); return; }
     // Counted in before sleeping, so the owner's leave knows to wake a waiter.
     if (Add(cs + kLockCount, 1) != 0)
         if (auto event = ObjectAt(cs))
