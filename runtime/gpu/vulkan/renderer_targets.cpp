@@ -109,9 +109,30 @@ namespace vk::renderer::detail
     // a depth image has one sample count, and the colour target it is bound
     // beside has to share it. MW2 tests and writes its world depth at 2x in
     // both passes, so nothing is split by that.
-    TargetKey DepthKey(uint32_t baseTile, uint32_t format, uint32_t samples)
+    //
+    // The scene scale (PES17_SCENE_SCALE, the phone's 0.75, and the heat scale's 0.5 under it) does
+    // split it. A target's scale goes with its width, and FIFA Street draws its shadow cascades into
+    // a 560x4096 colour surface over the same depth tile as its 1280-wide screen-space shadow pass:
+    // one depth image grew to 1280x4096 at the scene's scale, the cascades were drawn into it at
+    // three quarters of their size beside a full-size colour target and resolved as if at 1x --
+    // shadows a third larger (twice at 0.5), coarse, and in the futsal arena the whole court in
+    // shadow. A pass whose colour keeps its size gets a depth image of its own at 1x (`unscaled`);
+    // a resolve reads whichever image was drawn into last, and a clear empties both. (Splitting
+    // by width at the full scale as well turned the whole game black: something narrow there
+    // relies on the shared image. The court at scale 1 is still dark -- see CLAUDE.md.)
+    TargetKey DepthKey(uint32_t baseTile, uint32_t format, uint32_t samples, bool unscaled)
     {
-        return { baseTile, 0, format, g.msaa ? samples : 0, true };
+        TargetKey key{ baseTile, 0, format, g.msaa ? samples : 0, true };
+        key.unscaled = unscaled;
+        return key;
+    }
+
+    Target* FindDepthTarget(uint32_t baseTile, uint32_t format, uint32_t samples)
+    {
+        Target* scaled = FindTarget(DepthKey(baseTile, format, samples, false));
+        Target* unscaled = FindTarget(DepthKey(baseTile, format, samples, true));
+        if (!scaled || !unscaled) return scaled ? scaled : unscaled;
+        return unscaled->depthBound > scaled->depthBound ? unscaled : scaled;
     }
 
     // The console's 1x, 2x and 4x, as the device can draw them. A count the
@@ -501,7 +522,7 @@ namespace vk::renderer::detail
         target.depth = key.depth;
         target.width = width;
         target.height = height;
-        target.scale = SceneScaleFor(width);
+        target.scale = key.unscaled ? 1.0f : SceneScaleFor(width);
         target.format = VkFormat(key.format);
         target.guestFormat = guestFormat;
         target.samples = HostSamples(key.samples);
@@ -545,7 +566,7 @@ namespace vk::renderer::detail
         RetireBeforeDestroy();
         for (auto found = g.targets.begin(); found != g.targets.end();)
         {
-            if (found->second.width >= 1152 && found->second.scale != wanted)
+            if (found->second.width >= 1152 && found->second.scale != wanted && !found->first.unscaled)
             {
                 DestroyTarget(found->second);
                 found = g.targets.erase(found);
@@ -892,8 +913,10 @@ namespace vk::renderer::detail
         {
             const gpu::SurfaceInfo surface{ r[gpu::RB_SURFACE_INFO] };
             const gpu::DepthInfo depthInfo{ r[gpu::RB_DEPTH_INFO] };
+            // One EDRAM tile, so both of its images (DepthKey) are cleared.
+            for (const bool unscaled : { false, true })
             if (Target* target = FindTarget(DepthKey(depthInfo.BaseTile(), uint32_t(g.depthFormat),
-                                                     surface.MsaaSamples())))
+                                                     surface.MsaaSamples(), unscaled)))
             {
                 // The stored value is 24-bit depth with stencil in the low byte.
                 const uint32_t packed = r[gpu::RB_DEPTH_CLEAR];

@@ -75,6 +75,9 @@ namespace vk::renderer::detail
     {
         uint32_t baseTile = 0, pitch = 0, format = 0, samples = 0;
         bool depth = false;
+        // A depth surface drawn beside a colour target that keeps its own size while the scene is
+        // drawn smaller (DepthKey): kept at 1x, apart from the scaled image the scene uses.
+        bool unscaled = false;
         auto operator<=>(const TargetKey&) const = default;
     };
 
@@ -129,6 +132,9 @@ namespace vk::renderer::detail
         uint64_t clearedAtDraw = UINT64_MAX;
         // The frame that clear happened in, for the pass trace.
         uint64_t depthClearedIn = UINT64_MAX;
+        // When a pass last drew with this as its depth (State::depthBinds): of a depth surface's
+        // two images (TargetKey::unscaled), a resolve reads the one drawn into last.
+        uint64_t depthBound = 0;
     };
 
     struct Shader
@@ -281,6 +287,7 @@ namespace vk::renderer::detail
         // PES17_SCENE_SCALE (0.5-1): the full-frame surfaces are drawn this much
         // smaller each way and everything that reads them follows; the present
         // stretches the frame back. Only with scale 1.
+        uint64_t depthBinds = 0;   // Target::depthBound
         float sceneScale = 1.0f;
         // PES17_DYNAMIC_SCALE (dynamic_scale.h): the scene scale moved while the match
         // runs, from the passes' GPU time and the phone's thermal status. sceneScale
@@ -715,7 +722,9 @@ namespace vk::renderer::detail
     // ---- renderer_targets.cpp ----
     bool MakeImage(Target& target, VkImageUsageFlags usage, VkImageAspectFlags aspect);
     VkFormat ColourFormatFor(uint32_t format);
-    TargetKey DepthKey(uint32_t baseTile, uint32_t format, uint32_t samples);
+    TargetKey DepthKey(uint32_t baseTile, uint32_t format, uint32_t samples, bool unscaled = false);
+    // The depth surface at that tile as a resolve reads it: the image a pass drew into last.
+    Target* FindDepthTarget(uint32_t baseTile, uint32_t format, uint32_t samples);
     VkSampleCountFlagBits HostSamples(uint32_t guestSamples);
     Target* FindTarget(const TargetKey& key);
     Target* EnsureTarget(const TargetKey& key, uint32_t width, uint32_t height,

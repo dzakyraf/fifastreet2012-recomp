@@ -2,6 +2,7 @@
 #include "bindings.h"
 #include "spirv.h"
 #include "xenos_ucode.h"
+#include "../../env.h"
 
 #include <algorithm>
 #include <array>
@@ -96,6 +97,15 @@ namespace
 
         Id Emit(Op op, Id type, std::initializer_list<uint32_t> operands);
         Id Glsl450(Glsl instruction, Id type, std::initializer_list<uint32_t> operands);
+        // Direct3D 9's multiply, which the console's ALU does: a zero on either side makes the
+        // product zero, whatever the other is -- 0 * inf and 0 * NaN included. `x` and `y` are both
+        // float4 when `vector`, float otherwise. `vectorUnit`: for the vector half's mul, mad and
+        // dp, which take the plain product unless PES17_LEGACY_MATH=1 (see the definition).
+        Id LegacyMul(Id x, Id y, bool vector = false, bool vectorUnit = false);
+        // max and min as the console has them, a >= b ? a : b and a < b ? a : b: with a NaN on
+        // either side the second operand wins, where Vulkan's FMax and FMin are undefined. The
+        // vector half's take FMax and FMin unless PES17_LEGACY_MATH=1.
+        Id LegacyMax(Id x, Id y, bool max, bool vector = false, bool vectorUnit = false);
         Id Splat(float value) { return m_module.ConstantSplatF(value); }
         Id Component(Id vector, uint32_t index)
         {
@@ -813,6 +823,38 @@ namespace
     }
 
 
+    // The rule costs four instructions a component. On the vector half -- every mul, mad and dp of a
+    // lit pixel -- that was 3 to 7 ms of GPU time a frame on an Adreno 650 in the futsal arena (15 ms
+    // of passes to 18-22), and the frame looked no different, so there it is opt-in. The scalar half
+    // keeps it: that is where the console's pow, exp(log(x) * y), runs, and 0 * -inf has to stay 0.
+    static bool LegacyVectorMath()
+    {
+        static const bool on = env::Flag("PES17_LEGACY_MATH");
+        return on;
+    }
+
+    Id Translator::LegacyMul(Id x, Id y, bool vector, bool vectorUnit)
+    {
+        // PES17_IEEE_MATH=1: the plain IEEE product everywhere, for comparing.
+        static const bool ieee = env::Flag("PES17_IEEE_MATH");
+        if (ieee || (vectorUnit && !LegacyVectorMath())) return Emit(Op::FMul, vector ? m_float4 : m_float, { x, y });
+        const Id type = vector ? m_float4 : m_float;
+        const Id zero = vector ? Splat(0.0f) : m_module.ConstantF(0.0f);
+        // NMin of the magnitudes is zero when either is, NaN or not.
+        Id smaller = Glsl450(Glsl::NMin, type, { Glsl450(Glsl::FAbs, type, { x }),
+                                                 Glsl450(Glsl::FAbs, type, { y }) });
+        Id isZero = Emit(Op::FOrdEqual, vector ? m_bool4 : m_bool, { smaller, zero });
+        return Emit(Op::Select, type, { isZero, zero, Emit(Op::FMul, type, { x, y }) });
+    }
+
+    Id Translator::LegacyMax(Id x, Id y, bool max, bool vector, bool vectorUnit)
+    {
+        if (vectorUnit && !LegacyVectorMath())
+            return Glsl450(max ? Glsl::FMax : Glsl::FMin, vector ? m_float4 : m_float, { x, y });
+        Id pick = Emit(max ? Op::FOrdGreaterThanEqual : Op::FOrdLessThan, vector ? m_bool4 : m_bool, { x, y });
+        return Emit(Op::Select, vector ? m_float4 : m_float, { pick, x, y });
+    }
+
     Id Translator::VectorOperation(const Alu& op)
     {
         const uint32_t operands = VectorOperandCount(op.Vector());
@@ -856,39 +898,37 @@ namespace
         };
         auto cube = [&]() { return CubeCoordinates(a, b); };
         auto dot = [&](uint32_t count) {
-            Id x = Component(a, 0), y = Component(b, 0);
-            Id sum = Emit(Op::FMul, m_float, { x, y });
+            Id sum = LegacyMul(Component(a, 0), Component(b, 0), false, true);
             for (uint32_t i = 1; i < count; i++)
-                sum = Glsl450(Glsl::Fma, m_float,
-                              { Component(a, i), Component(b, i), sum });
+                sum = Emit(Op::FAdd, m_float, { sum, LegacyMul(Component(a, i), Component(b, i), false, true) });
             return BuildVector(sum, sum, sum, sum);
         };
 
         switch (op.Vector())
         {
         case VectorOpcode::Add:   return Emit(Op::FAdd, m_float4, { a, b });
-        case VectorOpcode::Mul:   return Emit(Op::FMul, m_float4, { a, b });
-        case VectorOpcode::Max:   return Glsl450(Glsl::FMax, m_float4, { a, b });
-        case VectorOpcode::Min:   return Glsl450(Glsl::FMin, m_float4, { a, b });
+        case VectorOpcode::Mul:   return LegacyMul(a, b, true, true);
+        case VectorOpcode::Max:   return LegacyMax(a, b, true, true, true);
+        case VectorOpcode::Min:   return LegacyMax(a, b, false, true, true);
         case VectorOpcode::Seq:   return compare(Op::FOrdEqual);
         case VectorOpcode::Sgt:   return compare(Op::FOrdGreaterThan);
         case VectorOpcode::Sge:   return compare(Op::FOrdGreaterThanEqual);
-        case VectorOpcode::Sne:   return compare(Op::FOrdNotEqual);
+        case VectorOpcode::Sne:   return compare(Op::FUnordNotEqual);
         case VectorOpcode::Frc:   return Glsl450(Glsl::Fract, m_float4, { a });
         case VectorOpcode::Trunc: return Glsl450(Glsl::Trunc, m_float4, { a });
         case VectorOpcode::Floor: return Glsl450(Glsl::Floor, m_float4, { a });
-        case VectorOpcode::Mad:   return Glsl450(Glsl::Fma, m_float4, { a, b, c });
+        case VectorOpcode::Mad:   return Emit(Op::FAdd, m_float4, { LegacyMul(a, b, true, true), c });
         case VectorOpcode::CndEq: return select(Op::FOrdEqual);
         case VectorOpcode::CndGe: return select(Op::FOrdGreaterThanEqual);
         case VectorOpcode::CndGt: return select(Op::FOrdGreaterThan);
         case VectorOpcode::SetpEqPush: return push(Op::FOrdEqual);
-        case VectorOpcode::SetpNePush: return push(Op::FOrdNotEqual);
+        case VectorOpcode::SetpNePush: return push(Op::FUnordNotEqual);
         case VectorOpcode::SetpGtPush: return push(Op::FOrdGreaterThan);
         case VectorOpcode::SetpGePush: return push(Op::FOrdGreaterThanEqual);
         case VectorOpcode::KillEq: return kill(Op::FOrdEqual);
         case VectorOpcode::KillGt: return kill(Op::FOrdGreaterThan);
         case VectorOpcode::KillGe: return kill(Op::FOrdGreaterThanEqual);
-        case VectorOpcode::KillNe: return kill(Op::FOrdNotEqual);
+        case VectorOpcode::KillNe: return kill(Op::FUnordNotEqual);
         case VectorOpcode::Cube:  return cube();
         case VectorOpcode::Dp4:   return dot(4);
         case VectorOpcode::Dp3:   return dot(3);
@@ -901,7 +941,7 @@ namespace
         {
             Id best = Component(a, 0);
             for (uint32_t i = 1; i < 4; i++)
-                best = Glsl450(Glsl::FMax, m_float, { best, Component(a, i) });
+                best = LegacyMax(best, Component(a, i), true, false, true);
             return BuildVector(best, best, best, best);
         }
         default:
@@ -974,11 +1014,18 @@ namespace
             Id b = Emit(comparison, m_module.Bool(), { x, m_module.ConstantF(0.0f) });
             return Emit(Op::Select, m_float, { b, m_module.ConstantF(1.0f), m_module.ConstantF(0.0f) });
         };
+        auto clampInfinity = [&](Id value, bool toZero) {
+            const float big = 3.402823466e+38f;
+            Id high = Emit(Op::FOrdEqual, m_bool, { value, m_module.ConstantF(INFINITY) });
+            Id low = Emit(Op::FOrdEqual, m_bool, { value, m_module.ConstantF(-INFINITY) });
+            value = Emit(Op::Select, m_float, { high, m_module.ConstantF(toZero ? 0.0f : big), value });
+            return Emit(Op::Select, m_float, { low, m_module.ConstantF(toZero ? -0.0f : -big), value });
+        };
 
         switch (opcode)
         {
         case ScalarOpcode::Adds:   r = Emit(Op::FAdd, m_float, { x, y }); break;
-        case ScalarOpcode::Muls:   r = Emit(Op::FMul, m_float, { x, y }); break;
+        case ScalarOpcode::Muls:   r = LegacyMul(x, y); break;
         case ScalarOpcode::Subs:   r = Emit(Op::FSub, m_float, { x, y }); break;
         case ScalarOpcode::MulsPrev2:
         {
@@ -992,10 +1039,10 @@ namespace
                                  { Emit(Op::FOrdGreaterThanEqual, m_bool,
                                         { y, m_module.ConstantF(0.0f) }) }) });
             r = Emit(Op::Select, m_float,
-                     { bad, negativeMax, Emit(Op::FMul, m_float, { x, previous }) });
+                     { bad, negativeMax, LegacyMul(x, previous) });
             break;
         }
-        case ScalarOpcode::Maxs:   r = Glsl450(Glsl::FMax, m_float, { x, y }); break;
+        case ScalarOpcode::Maxs:   r = LegacyMax(x, y, true); break;
         // The maxa family is a max that also loads a0 from the first source.
         // maxas rounds to nearest, maxasf truncates towards minus infinity.
         case ScalarOpcode::MaxAs:
@@ -1008,32 +1055,39 @@ namespace
                                  { rounded, m_module.ConstantF(-256.0f), m_module.ConstantF(255.0f) });
             Module::Emit(m_module.Code(), Op::Store,
                          { m_a0, Emit(Op::ConvertFToS, m_int, { clamped }) });
-            r = Glsl450(Glsl::FMax, m_float, { x, y });
+            r = LegacyMax(x, y, true);
             break;
         }
-        case ScalarOpcode::Mins:   r = Glsl450(Glsl::FMin, m_float, { x, y }); break;
+        case ScalarOpcode::Mins:   r = LegacyMax(x, y, false); break;
         case ScalarOpcode::Seqs:   r = compare(Op::FOrdEqual); break;
         case ScalarOpcode::Sgts:   r = compare(Op::FOrdGreaterThan); break;
         case ScalarOpcode::Sges:   r = compare(Op::FOrdGreaterThanEqual); break;
-        case ScalarOpcode::Snes:   r = compare(Op::FOrdNotEqual); break;
+        case ScalarOpcode::Snes:   r = compare(Op::FUnordNotEqual); break;
         case ScalarOpcode::Frcs:   r = unary(Glsl::Fract); break;
         case ScalarOpcode::Truncs: r = unary(Glsl::Trunc); break;
         case ScalarOpcode::Floors: r = unary(Glsl::Floor); break;
         case ScalarOpcode::Exp:    r = unary(Glsl::Exp2); break;
-        case ScalarOpcode::Log:
-        case ScalarOpcode::Logc:   r = unary(Glsl::Log2); break;
+        case ScalarOpcode::Log:    r = unary(Glsl::Log2); break;
+        // The c forms clamp an infinite result to the largest finite number of its sign, the f forms
+        // (rcpf, rsqf) put it at zero.
+        case ScalarOpcode::Logc:   r = clampInfinity(unary(Glsl::Log2), false); break;
         case ScalarOpcode::Sqrt:   r = unary(Glsl::Sqrt); break;
         case ScalarOpcode::Sin:    r = unary(Glsl::Sin); break;
         case ScalarOpcode::Cos:    r = unary(Glsl::Cos); break;
         case ScalarOpcode::Rcp:
-        case ScalarOpcode::Rcpc:
-        case ScalarOpcode::Rcpf:
             r = Emit(Op::FDiv, m_float, { m_module.ConstantF(1.0f), x });
             break;
+        case ScalarOpcode::Rcpc:
+        case ScalarOpcode::Rcpf:
+            r = clampInfinity(Emit(Op::FDiv, m_float, { m_module.ConstantF(1.0f), x }),
+                              opcode == ScalarOpcode::Rcpf);
+            break;
         case ScalarOpcode::Rsq:
+            r = unary(Glsl::InverseSqrt);
+            break;
         case ScalarOpcode::Rsqc:
         case ScalarOpcode::Rsqf:
-            r = unary(Glsl::InverseSqrt);
+            r = clampInfinity(unary(Glsl::InverseSqrt), opcode == ScalarOpcode::Rsqf);
             break;
         case ScalarOpcode::AddsPrev:
             if (!m_havePreviousScalar) { Fail("scalar prev with no previous result", 0); return 0; }
@@ -1041,14 +1095,14 @@ namespace
             break;
         case ScalarOpcode::MulsPrev:
             if (!m_havePreviousScalar) { Fail("scalar prev with no previous result", 0); return 0; }
-            r = Emit(Op::FMul, m_float, { x, Emit(Op::Load, m_float, { m_previousScalar }) });
+            r = LegacyMul(x, Emit(Op::Load, m_float, { m_previousScalar }));
             break;
         case ScalarOpcode::SubsPrev:
             if (!m_havePreviousScalar) { Fail("scalar prev with no previous result", 0); return 0; }
             r = Emit(Op::FSub, m_float, { x, Emit(Op::Load, m_float, { m_previousScalar }) });
             break;
         case ScalarOpcode::Mulsc0:
-        case ScalarOpcode::Mulsc1: r = Emit(Op::FMul, m_float, { x, y }); break;
+        case ScalarOpcode::Mulsc1: r = LegacyMul(x, y); break;
         case ScalarOpcode::Addsc0:
         case ScalarOpcode::Addsc1: r = Emit(Op::FAdd, m_float, { x, y }); break;
         case ScalarOpcode::Subsc0:
@@ -1065,7 +1119,7 @@ namespace
             Id set;
             switch (opcode)
             {
-            case ScalarOpcode::SetpNe: set = Emit(Op::FOrdNotEqual, m_bool, { x, zero }); break;
+            case ScalarOpcode::SetpNe: set = Emit(Op::FUnordNotEqual, m_bool, { x, zero }); break;
             case ScalarOpcode::SetpGt: set = Emit(Op::FOrdGreaterThan, m_bool, { x, zero }); break;
             case ScalarOpcode::SetpGe: set = Emit(Op::FOrdGreaterThanEqual, m_bool, { x, zero }); break;
             default:                   set = Emit(Op::FOrdEqual, m_bool, { x, zero }); break;
@@ -1088,7 +1142,7 @@ namespace
                                                           : m_module.ConstantF(0.0f);
             Op comparison = opcode == ScalarOpcode::KillsGt ? Op::FOrdGreaterThan
                           : opcode == ScalarOpcode::KillsGe ? Op::FOrdGreaterThanEqual
-                          : opcode == ScalarOpcode::KillsNe ? Op::FOrdNotEqual
+                          : opcode == ScalarOpcode::KillsNe ? Op::FUnordNotEqual
                                                             : Op::FOrdEqual;
             Id fired = Emit(comparison, m_bool, { x, against });
             RequestKill(fired);

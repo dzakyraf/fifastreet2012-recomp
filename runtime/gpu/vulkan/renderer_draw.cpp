@@ -877,10 +877,16 @@ void vk::renderer::Draw(const gpu::RegisterFile& r, const DrawCall& call)
                                           uint32_t(ColourFormatFor(colour.Format())),
                                           useSamples, false },
                                         width, height, colour.Format());
+    // Beside a colour target that keeps its size while the scene is drawn smaller, the depth
+    // surface's 1x image (DepthKey). PES17_SHARED_DEPTH=1 keeps the one image, for comparing.
+    static const bool sharedDepth = env::Flag("PES17_SHARED_DEPTH");
+    const bool unscaledDepth = !sharedDepth && colourTarget && colourTarget->scale == 1.0f &&
+                               SceneScaleFor(1280) != 1.0f;
     Target* depthTarget = EnsureTarget(DepthKey(depthInfo.BaseTile(), uint32_t(g.depthFormat),
-                                                useSamples),
+                                                useSamples, unscaledDepth),
                                         width, height, depthInfo.Format());
     if (!colourTarget || !depthTarget) return;
+    depthTarget->depthBound = ++g.depthBinds;
 
     // In a frame dump, what the stencil buffer holds when a draw that tests it for EQUAL begins: the
     // crowd's composite is one, and it draws only where the billboard passes marked the stencil.

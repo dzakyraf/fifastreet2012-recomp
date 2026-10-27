@@ -46,7 +46,7 @@ namespace spirv
         LogicalOr = 166, LogicalAnd = 167, LogicalNot = 168, Select = 169,
         IEqual = 170, INotEqual = 171, SGreaterThan = 173,
         SGreaterThanEqual = 174, SLessThan = 177, SLessThanEqual = 178,
-        FOrdEqual = 180, FOrdNotEqual = 182, FOrdLessThan = 184,
+        FOrdEqual = 180, FOrdNotEqual = 182, FUnordNotEqual = 183, FOrdLessThan = 184,
         FOrdGreaterThan = 186, FOrdLessThanEqual = 188,
         FOrdGreaterThanEqual = 190,
         ShiftRightLogical = 194, ShiftLeftLogical = 196, BitwiseOr = 197,
@@ -64,7 +64,7 @@ namespace spirv
         SMin = 39, FMin = 37, SMax = 42, FMax = 40, FClamp = 43, SClamp = 45,
         Fma = 50, Normalize = 69,
         UnpackHalf2x16 = 62,
-        NClamp = 81,
+        NMin = 79, NClamp = 81,
     };
 
     enum class StorageClass : uint32_t

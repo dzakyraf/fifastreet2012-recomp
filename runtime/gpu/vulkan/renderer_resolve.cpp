@@ -505,8 +505,8 @@ void vk::renderer::Resolve(const gpu::RegisterFile& r)
     {
         const uint32_t destination = baseDestination;
         const gpu::DepthInfo depthInfo{ r[gpu::RB_DEPTH_INFO] };
-        Target* from = FindTarget(DepthKey(depthInfo.BaseTile(), uint32_t(g.depthFormat),
-                                           surface.MsaaSamples()));
+        Target* from = FindDepthTarget(depthInfo.BaseTile(), uint32_t(g.depthFormat),
+                                       surface.MsaaSamples());
         if (!from) { Skip("resolve of a depth surface never drawn into"); SubmitIfFilling(); return; }
         if (!g.recording && !BeginFrame()) { Skip("no command buffer"); return; }
         g.resolves++;
@@ -889,9 +889,13 @@ void vk::renderer::Resolve(const gpu::RegisterFile& r)
 
     // In a frame dump, the resolve as it was at this point of the frame, for the crowd's two G-buffers:
     // the same address is resolved to again later, and the end-of-frame images only keep the last.
+    // On the phone also the match's post-processing inputs: the scene (044D0000), the bloom's bright
+    // pass (06C80000) and its sum (06D30000). Not every resolve: a mid-frame Submit(true) for each
+    // made the Adreno recorder fault in vkCmdClearColorImage.
     // On a desktop, every 8_8_8_8 resolve at least 320 wide: where a full-screen pass goes dark.
 #ifdef PES17_ANDROID
-    if (g_dumpDraws && !exact && (destination == 0x07EB0000u || destination == 0x08370000u || destination == 0x075D0000u) && into.format == VK_FORMAT_R8G8B8A8_UNORM)
+    if (g_dumpDraws && !exact && (destination == 0x07EB0000u || destination == 0x08370000u || destination == 0x075D0000u ||
+                         destination == 0x044D0000u || destination == 0x06D30000u || destination == 0x06C80000u) && into.format == VK_FORMAT_R8G8B8A8_UNORM)
 #else
     if (g_dumpDraws && !exact && into.width >= 320 && into.format == VK_FORMAT_R8G8B8A8_UNORM)
 #endif
