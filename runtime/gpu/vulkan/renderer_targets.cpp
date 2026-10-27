@@ -408,6 +408,74 @@ namespace vk::renderer::detail
                       VK_PIPELINE_STAGE_TRANSFER_BIT, kColourStages);
     }
 
+    // The legacy path's depth resolve: a render pass of the multisampled depth and its single-sampled
+    // twin, the subpass resolving the first sample into the twin (VK_KHR_depth_stencil_resolve on a
+    // Vulkan 1.1 device, through vkCreateRenderPass2KHR). One per format and sample count.
+    static std::map<std::pair<VkFormat, VkSampleCountFlagBits>, VkRenderPass> g_depthResolvePasses;
+
+    static VkRenderPass DepthResolvePass(VkFormat format, VkSampleCountFlagBits samples)
+    {
+        auto found = g_depthResolvePasses.find({ format, samples });
+        if (found != g_depthResolvePasses.end()) return found->second;
+        static const auto create = PFN_vkCreateRenderPass2KHR([] {
+            PFN_vkVoidFunction f = vkGetDeviceProcAddr(g.device, "vkCreateRenderPass2KHR");
+            return f ? f : vkGetDeviceProcAddr(g.device, "vkCreateRenderPass2");
+        }());
+        VkRenderPass pass = VK_NULL_HANDLE;
+        if (create)
+        {
+            // The stencil is resolved too when the device can take its first sample; the depth is
+            // what the title reads back.
+            VkPhysicalDeviceDepthStencilResolveProperties resolve{
+                VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_STENCIL_RESOLVE_PROPERTIES };
+            VkPhysicalDeviceProperties2 properties{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2 };
+            properties.pNext = &resolve;
+            vkGetPhysicalDeviceProperties2(g.physical, &properties);
+
+            VkAttachmentDescription2 attachments[2]{};
+            for (VkAttachmentDescription2& a : attachments)
+            {
+                a.sType = VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_2;
+                a.format = format;
+                a.storeOp = a.stencilStoreOp = VK_ATTACHMENT_STORE_OP_STORE;
+                a.initialLayout = a.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+            }
+            attachments[0].samples = samples;
+            attachments[0].loadOp = attachments[0].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+            attachments[1].samples = VK_SAMPLE_COUNT_1_BIT;
+            attachments[1].loadOp = attachments[1].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+            VkAttachmentReference2 depth{ VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2 };
+            depth.attachment = 0;
+            depth.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+            depth.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
+            VkAttachmentReference2 into = depth;
+            into.attachment = 1;
+            VkSubpassDescriptionDepthStencilResolve resolveInfo{
+                VK_STRUCTURE_TYPE_SUBPASS_DESCRIPTION_DEPTH_STENCIL_RESOLVE };
+            resolveInfo.depthResolveMode = VK_RESOLVE_MODE_SAMPLE_ZERO_BIT;
+            resolveInfo.stencilResolveMode = (resolve.supportedStencilResolveModes & VK_RESOLVE_MODE_SAMPLE_ZERO_BIT)
+                                                 ? VK_RESOLVE_MODE_SAMPLE_ZERO_BIT : VK_RESOLVE_MODE_NONE;
+            resolveInfo.pDepthStencilResolveAttachment = &into;
+            VkSubpassDescription2 subpass{ VK_STRUCTURE_TYPE_SUBPASS_DESCRIPTION_2 };
+            subpass.pNext = &resolveInfo;
+            subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+            subpass.pDepthStencilAttachment = &depth;
+            VkRenderPassCreateInfo2 info{ VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO_2 };
+            info.attachmentCount = 2;
+            info.pAttachments = attachments;
+            info.subpassCount = 1;
+            info.pSubpasses = &subpass;
+            if (create(g.device, &info, nullptr, &pass) != VK_SUCCESS) pass = VK_NULL_HANDLE;
+        }
+        if (!pass)
+        {
+            static std::atomic<int> told{ 0 };
+            if (told++ < 2) LOGW("renderer: no depth resolve render pass: a multisampled depth reads back as nothing");
+        }
+        g_depthResolvePasses[{ format, samples }] = pass;
+        return pass;
+    }
+
     // The same for a depth target, whose resolve is a render pass over the
     // rectangle with nothing drawn in it.
     VkImage BeginReadingDepth(Target& target, VkOffset2D at, uint32_t width, uint32_t height)
@@ -432,6 +500,18 @@ namespace vk::renderer::detail
         const VkImageView view = target.view, twinView = target.singleView;
         const VkImage twin = target.singleImage;
         const VkRect2D area{ Scaled(at, target.scale), Scaled(VkExtent2D{ width, height }, target.scale) };
+        // Without dynamic rendering (the Adreno 650's Vulkan 1.1) the resolve is a classic render pass.
+        // Skipped, the twin was never written: the match's depth read back as 0 everywhere, and the
+        // depth of field -- goal celebrations, cutscenes -- blurred the whole frame.
+        VkRenderPass legacyPass = VK_NULL_HANDLE;
+        VkFramebuffer legacyFramebuffer = VK_NULL_HANDLE;
+        if (!dispatch.beginRendering || !dispatch.endRendering)
+        {
+            legacyPass = DepthResolvePass(target.format, target.samples);
+            if (legacyPass)
+                legacyFramebuffer = GetFramebuffer(legacyPass, view, twinView, HostOf(target.width, target.scale),
+                                                   HostOf(target.height, target.scale));
+        }
         Record([=](VkCommandBuffer command) {
             constexpr VkImageAspectFlags kBoth = VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
             // The draws before it wrote the depth; the copies before it read the twin.
@@ -469,6 +549,15 @@ namespace vk::renderer::detail
             {
                 dispatch.beginRendering(command, &info);
                 dispatch.endRendering(command);
+            }
+            else if (legacyPass && legacyFramebuffer)
+            {
+                VkRenderPassBeginInfo begin{ VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO };
+                begin.renderPass = legacyPass;
+                begin.framebuffer = legacyFramebuffer;
+                begin.renderArea = area;
+                vkCmdBeginRenderPass(command, &begin, VK_SUBPASS_CONTENTS_INLINE);
+                vkCmdEndRenderPass(command);
             }
 
             // A resolve writes at the colour output stage whatever it
@@ -726,6 +815,9 @@ namespace vk::renderer::detail
         for (auto& [k, pass] : g.legacyRenderPasses)
             if (pass) vkDestroyRenderPass(g.device, pass, nullptr);
         g.legacyRenderPasses.clear();
+        for (auto& [k, pass] : g_depthResolvePasses)
+            if (pass) vkDestroyRenderPass(g.device, pass, nullptr);
+        g_depthResolvePasses.clear();
     }
 
     void BeginRendering(const Target& colour, const Target& depth, uint32_t width,

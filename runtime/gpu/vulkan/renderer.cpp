@@ -189,7 +189,11 @@ bool vk::renderer::Initialise()
         const bool depthResolve =
             (modern || vk::pipeline::DeviceHasExtension(g.physical, VK_KHR_DEPTH_STENCIL_RESOLVE_EXTENSION_NAME)) &&
             (resolve.supportedDepthResolveModes & VK_RESOLVE_MODE_SAMPLE_ZERO_BIT);
-        g.msaa = !off && depthResolve && (g.sampleCounts & ~VkSampleCountFlags(VK_SAMPLE_COUNT_1_BIT));
+        // On the legacy path (a Vulkan 1.1 device without dynamic rendering, the Adreno 650's) a
+        // multisampled depth read back as nothing even through a render pass resolve: the match's depth
+        // resolve was all zeros and the depth of field blurred every goal celebration whole. Off there.
+        const bool legacy = vk::pipeline::LegacyMode();
+        g.msaa = !off && !legacy && depthResolve && (g.sampleCounts & ~VkSampleCountFlags(VK_SAMPLE_COUNT_1_BIT));
         if (g.msaa)
             LOGI("renderer: multisampling on: the device draws at%s%s%s%s, the title's 2x and 4x"
                  " surfaces are drawn at %ux and %ux%s",
@@ -201,7 +205,7 @@ bool vk::renderer::Initialise()
                  env::Text("PES17_MSAA") ? " (PES17_MSAA)" : "");
         else
             LOGI("renderer: multisampling off (%s): the title's 2x and 4x surfaces are drawn at 1x",
-                 off ? "PES17_NO_MSAA" : !modern && !vk::pipeline::DeviceHasExtension(g.physical, VK_KHR_DEPTH_STENCIL_RESOLVE_EXTENSION_NAME) ? "the device is Vulkan 1.1 without the depth resolve extension"
+                 off ? "PES17_NO_MSAA" : legacy ? "the legacy path cannot read a multisampled depth back" : !modern && !vk::pipeline::DeviceHasExtension(g.physical, VK_KHR_DEPTH_STENCIL_RESOLVE_EXTENSION_NAME) ? "the device is Vulkan 1.1 without the depth resolve extension"
                      : !depthResolve ? "no first-sample depth resolve"
                      : "the device draws at 1x only");
     }

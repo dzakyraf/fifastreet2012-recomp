@@ -529,16 +529,27 @@ void vk::renderer::Resolve(const gpu::RegisterFile& r)
         const gpu::CopyDestInfo destInfo{ r[gpu::RB_COPY_DEST_INFO] };
         const uint32_t texelBytes = std::max(1u, gpu::TextureFormatOf(destInfo.Format()).bitsPerBlock / 8);
         const uint32_t rowBytes = destPitch.Pitch() * texelBytes;
-        uint32_t surfaceBase = destination, row = 0;
+        // The destination is tiled in 32x32 blocks, so the offset says which block: the cascades'
+        // four megabytes on is 32 blocks down at x 0 (row 1024), and FIFA Street's right-hand predicated
+        // match tile, 0x14000 on, is 20 blocks across (x 640) -- read as rows, it landed 16 rows down the
+        // left half, the right half of the match's depth stayed stale, and the depth of field that reads
+        // it blurred one half of every goal celebration and not the other.
+        uint32_t surfaceBase = destination, row = 0, column = 0;
         for (const auto& [base, known] : g.resolveSurfaces)
+        {
+            const uint32_t tileBytes = 32u * 32u * texelBytes;
+            const uint32_t tilesPerRow = rowBytes / texelBytes / 32u;
             if (known.frame == g.frames && base < destination &&
-                destination - base < known.bytes && known.rowBytes == rowBytes && rowBytes &&
-                (destination - base) % rowBytes == 0)
+                destination - base < known.bytes && known.rowBytes == rowBytes && rowBytes && tilesPerRow &&
+                (destination - base) % tileBytes == 0)
             {
+                const uint32_t tile = (destination - base) / tileBytes;
                 surfaceBase = base;
-                row = (destination - base) / rowBytes;
+                column = (tile % tilesPerRow) * 32u;
+                row = (tile / tilesPerRow) * 32u;
                 break;
             }
+        }
         if (surfaceBase == destination && rowBytes)
             g.resolveSurfaces[destination] = { rowBytes * std::min(destPitch.Height(), 8192u),
                                                rowBytes, g.frames };
@@ -549,7 +560,7 @@ void vk::renderer::Resolve(const gpu::RegisterFile& r)
         // from the draw scissor rounded down to 8, which moves with the camera;
         // writing them at row 0 moved every shadow the atlas casts by that many
         // texels, and by a different amount as the view turned.
-        const uint32_t destX = uint32_t(rect.offset.x);
+        const uint32_t destX = column + uint32_t(rect.offset.x);
         const uint32_t destY = row + uint32_t(rect.offset.y);
 
         Resolved& into = ResolveCopyFor(surfaceBase);
@@ -619,6 +630,19 @@ void vk::renderer::Resolve(const gpu::RegisterFile& r)
                       VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
                       VK_PIPELINE_STAGE_TRANSFER_BIT, kShaderStages);
         EndReadingDepth(*from);
+        // In a frame dump, which depth image the match's depth resolve read (the depth of field reads it).
+        if (g_dumpDraws && destination == 0x04870000u)
+        {
+            LOGW("DUMP depth resolve from tile %u, surface pitch %u samples %u: read %ux%u %ux scale %.3g, %llu draws, bound #%llu",
+                 depthInfo.BaseTile(), surface.Pitch(), surface.MsaaSamples(), from->width, from->height,
+                 unsigned(from->samples), from->scale, (unsigned long long)from->draws,
+                 (unsigned long long)from->depthBound);
+            for (const auto& [key, target] : g.targets)
+                if (key.depth && key.baseTile == depthInfo.BaseTile())
+                    LOGW("DUMP   depth image at the tile: key samples %u unscaled %d, %ux%u %ux scale %.3g, %llu draws, bound #%llu",
+                         key.samples, int(key.unscaled), target.width, target.height, unsigned(target.samples),
+                         target.scale, (unsigned long long)target.draws, (unsigned long long)target.depthBound);
+        }
         g.depthResolves++;
         ClearAfterResolve(r, control);
         if (!SubmitIfFilling()) Skip("frame submission failed");

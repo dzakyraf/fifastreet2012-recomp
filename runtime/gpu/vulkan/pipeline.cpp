@@ -373,7 +373,13 @@ bool vk::pipeline::CreateDevice(void* physicalDevice, uint32_t family,
     {
         if (physicalProperties.apiVersion < VK_API_VERSION_1_2 &&
             DeviceHasExtension(physical, VK_KHR_DEPTH_STENCIL_RESOLVE_EXTENSION_NAME))
+        {
             extensions.push_back(VK_KHR_DEPTH_STENCIL_RESOLVE_EXTENSION_NAME);
+            // Which it depends on, and which makes the legacy path's resolve pass
+            // (renderer_targets.cpp DepthResolvePass).
+            if (DeviceHasExtension(physical, VK_KHR_CREATE_RENDERPASS_2_EXTENSION_NAME))
+                extensions.push_back(VK_KHR_CREATE_RENDERPASS_2_EXTENSION_NAME);
+        }
         // The depth resolve's own query goes through GetPhysicalDevice*
         // Properties2, and the 1.1 promoted Maintenance1 is where negative
         // viewport heights (the renderer's flipped clip space) live.
