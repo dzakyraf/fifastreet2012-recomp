@@ -76,6 +76,11 @@ namespace
         bool writable = false;
         bool deleteOnClose = false;
         std::mutex lock;
+        // NtQueryDirectoryFile: the entries of a directory, listed on the first query, and the next one to hand out.
+        std::vector<fs::directory_entry> listing;
+        size_t listed = 0;
+        bool haveListing = false;
+        std::string rule = "*";
 
         const char* TypeName() const override { return "file"; }
         ~FileObject() override
@@ -375,6 +380,85 @@ PPC_FUNC(__imp__NtOpenFile)
     if (handleOut && status == X_STATUS_SUCCESS) *handleOut = handle;
     if (iosb) { iosb->status = status; iosb->information = (status == X_STATUS_SUCCESS) ? information : 0u; }
     ctx.r3.u64 = status;
+}
+
+namespace { constexpr uint32_t X_STATUS_NO_MORE_FILES = 0x80000006, X_STATUS_BUFFER_OVERFLOW = 0x80000005, X_STATUS_INFO_LENGTH_MISMATCH = 0xC0000004; }
+
+// "*" and "?" against a name, ignoring case, as the file system's search pattern does.
+static bool WildcardMatch(const char* pattern, const char* name)
+{
+    for (; *pattern; pattern++, name++)
+    {
+        if (*pattern == '*')
+        {
+            while (pattern[1] == '*') pattern++;
+            for (const char* n = name;; n++)
+            {
+                if (WildcardMatch(pattern + 1, n)) return true;
+                if (!*n) return false;
+            }
+        }
+        if (!*name) return false;
+        if (*pattern != '?' && std::tolower((unsigned char)*pattern) != std::tolower((unsigned char)*name)) return false;
+    }
+    return !*name;
+}
+
+// (handle, event, apcRoutine, apcContext, ioStatus, buffer, length, fileName, restartScan). One
+// XDIRECTORY_INFORMATION entry per call, as Xenia: 0x40 bytes of times, sizes, attributes and name length, then the name.
+PPC_FUNC(__imp__NtQueryDirectoryFile)
+{
+    auto file = std::dynamic_pointer_cast<FileObject>(LookupHandle(ctx.r3.u32));
+    auto* iosb = GuestPtr<XIoStatusBlock>(ctx.r7.u32);
+    const uint32_t buffer = ctx.r8.u32, length = ctx.r9.u32;
+    std::string pattern;
+    if (auto* s = GuestPtr<XAnsiString>(ctx.r10.u32); s && s->pointer && s->length)
+        pattern.assign(reinterpret_cast<const char*>(guest::Base() + uint32_t(s->pointer)), s->length);
+    const bool restart = kernel::StackArgument(ctx, 8) != 0;
+
+    auto finish = [&](uint32_t status, uint32_t information)
+    {
+        LOGK("NtQueryDirectoryFile: %s pattern '%s'%s -> %08X", file ? file->path.string().c_str() : "(no file)", pattern.c_str(),
+             restart ? " (restart)" : "", status);
+        if (iosb) { iosb->status = status; iosb->information = information; }
+        if (auto event = LookupHandleAs<Event>(ctx.r4.u32)) event->Set();
+        ctx.r3.u64 = status;
+    };
+    if (length < 72) { finish(X_STATUS_INFO_LENGTH_MISMATCH, 0); return; }
+    if (!file || !file->isDirectory) { finish(X_STATUS_NO_SUCH_FILE, 0); return; }
+
+    std::lock_guard g(file->lock);
+    if (!file->haveListing || restart || !pattern.empty())
+    {
+        std::error_code ec;
+        file->listing.clear();
+        for (const auto& entry : fs::directory_iterator(file->path, ec)) file->listing.push_back(entry);
+        std::sort(file->listing.begin(), file->listing.end());
+        file->listed = 0;
+        file->haveListing = true;
+    }
+    if (!pattern.empty()) file->rule = pattern;     // the pattern given with the first query stays for the next ones
+    const std::string& rule = file->rule;
+    while (file->listed < file->listing.size())
+    {
+        const auto& entry = file->listing[file->listed++];
+        const std::string name = entry.path().filename().string();
+        if (!WildcardMatch(rule.c_str(), name.c_str())) continue;
+        std::error_code ec;
+        const bool dir = entry.is_directory(ec);
+        const uint64_t size = dir ? 0 : uint64_t(entry.file_size(ec));
+        if (length < 0x40 + name.size()) { finish(X_STATUS_BUFFER_OVERFLOW, 0); return; }
+        std::memset(guest::Base() + buffer, 0, 0x40);
+        *GuestPtr<be32>(buffer + 4) = uint32_t(file->listed);
+        *GuestPtr<be64>(buffer + 0x28) = size;                    // end of file
+        *GuestPtr<be64>(buffer + 0x30) = (size + 0xFFF) & ~0xFFFull;
+        *GuestPtr<be32>(buffer + 0x38) = dir ? 0x10u : 0x80u;     // DIRECTORY / NORMAL
+        *GuestPtr<be32>(buffer + 0x3C) = uint32_t(name.size());
+        std::memcpy(guest::Base() + buffer + 0x40, name.data(), name.size());
+        finish(X_STATUS_SUCCESS, length);
+        return;
+    }
+    finish(file->listed == 0 && !pattern.empty() ? X_STATUS_NO_SUCH_FILE : X_STATUS_NO_MORE_FILES, 0);
 }
 
 PPC_FUNC(__imp__NtReadFile)

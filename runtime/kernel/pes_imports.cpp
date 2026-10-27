@@ -649,15 +649,6 @@ PPC_FUNC(__imp__XAudioGetSpeakerConfig)
 
 PPC_FUNC(__imp__VdSetDisplayModeOverride) { ctx.r3.u64 = X_STATUS_SUCCESS; }
 
-PPC_FUNC(__imp__NtQueryDirectoryFile)
-{
-    // Nothing in the game folder needs listing to boot; say so cleanly instead of
-    // "success" over an unwritten buffer.
-    LOGW("NtQueryDirectoryFile: handle %08X, pattern '%s' -- reported empty",
-         ctx.r3.u32, ctx.r10.u32 ? GuestString(Load32(ctx.r10.u32 + 4), 128).c_str() : "");
-    ctx.r3.u64 = X_STATUS_NO_MORE_FILES;
-}
-
 // ---- hashing ----------------------------------------------------------------------
 
 namespace

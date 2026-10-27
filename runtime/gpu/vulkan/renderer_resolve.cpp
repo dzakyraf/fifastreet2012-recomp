@@ -117,6 +117,41 @@ namespace vk::renderer::detail
                 if (!spares[i].image) spares.erase(spares.begin() + ptrdiff_t(i));
                 return true;
             }
+            if (into.image && spares.size() >= kMaxSpares)
+            {
+                // Full. Every scene-scale step leaves a set of shapes at a scale nobody asks for
+                // again, and the pool never freed them: once it filled, each of the match's three
+                // depth resolves a frame took the destroy path below (a wait for the GPU to go
+                // idle: 60% of the command thread's time in FIFA Street's futsal hall). Free a
+                // batch in one wait -- the shapes of other scales first, then the oldest.
+                std::vector<Resolved> doomed;
+                for (size_t i = 0; i < spares.size();)
+                {
+                    if (spares[i].scale != scale && spares[i].scale != 1.0f && spares[i].scale != g.sceneScale)
+                    {
+                        doomed.push_back(spares[i]);
+                        spares.erase(spares.begin() + ptrdiff_t(i));
+                    }
+                    else i++;
+                }
+                for (size_t n = spares.size() >= kMaxSpares ? 8 : 0; n > 0 && !spares.empty(); n--)
+                {
+                    doomed.push_back(spares.front());
+                    spares.erase(spares.begin());
+                }
+                if (!doomed.empty())
+                {
+                    RetireBeforeDestroy();
+                    vk::textures::ForgetSets();
+                    for (Resolved& old : doomed)
+                    {
+                        if (old.view) vkDestroyImageView(g.device, old.view, nullptr);
+                        if (old.gammaView) vkDestroyImageView(g.device, old.gammaView, nullptr);
+                        if (old.image) vkDestroyImage(g.device, old.image, nullptr);
+                        if (old.memory) vkFreeMemory(g.device, old.memory, nullptr);
+                    }
+                }
+            }
             if (into.image && spares.size() < kMaxSpares)
             {
                 spares.push_back(into);

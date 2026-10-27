@@ -82,7 +82,7 @@
         <item name="android:paddingStart">6dp</item>
         <item name="android:drawablePadding">8dp</item>
         <item name="android:drawableStart">@drawable/ic_menu_cursor_space</item>
-        <item name="android:textColor">@color/pes_navy</item>
+        <item name="android:textColor">@color/pes_text</item>
         <item name="android:textSize">17sp</item>
         <item name="android:textStyle">bold|italic</item>
         <item name="android:textAllCaps">true</item>

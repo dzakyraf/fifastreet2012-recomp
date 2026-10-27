@@ -2,6 +2,7 @@
 #include <ppc_recomp_shared.h>
 #include <atomic>
 #include <cstring>
+#include <cstdio>
 #include <map>
 #include <mutex>
 #include <cstdlib>
@@ -60,6 +61,12 @@ GUEST_HOOK(82753EA8)
     char head[64] = {};
     for (int i = 0; got && i < 16; i++) std::snprintf(head + i * 3, 4, "%02X ", *GuestPtr<uint8_t>(got + i));
     LOGI("probe: file load '%s' -> %08X, %u bytes: %s", name, got, size, head);
+    // PES17_DUMP_LOADS=<dir> saves every file load whose name contains "dime" (store/unlock config).
+    if (const char* dir = std::getenv("PES17_DUMP_LOADS"); dir && got && size && std::strstr(name, "dime"))
+    {
+        std::string out = std::string(dir) + "/" + (std::strrchr(name, '/') ? std::strrchr(name, '/') + 1 : name);
+        if (std::FILE* f = std::fopen(out.c_str(), "wb")) { std::fwrite(guest::Base() + got, 1, size, f); std::fclose(f); }
+    }
 }
 
 // The allocator a thread allocates from (sub_8263C310): a table of (thread handle, allocator) at
