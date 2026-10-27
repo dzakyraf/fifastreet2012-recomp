@@ -52,7 +52,11 @@ namespace vk::textures
     // seen and handed back, re-staged if its memory changed, after that.
     // The id is the image and the sampler the constant asks for: one image
     // serves every sampler state the texture is bound with.
-    uint64_t Upload(const gpu::TextureFetch& fetch, const char** error);
+    // `declaredKind` is what the shader fetches the slot as (shader::Translation::textureKinds), or
+    // kAnyKind. A constant that says 3D under a 2D fetch -- the title's k_8_8 colour ramps -- is
+    // uploaded as its first slice, a 2D image, since a volume cannot be bound to a 2D sampler.
+    constexpr uint8_t kAnyKind = 255;
+    uint64_t Upload(const gpu::TextureFetch& fetch, const char** error, uint8_t declaredKind = kAnyKind);
 
     // A render target the title resolved out to memory and samples back. The
     // image belongs to the caller, so the entry only borrows its view; `key`

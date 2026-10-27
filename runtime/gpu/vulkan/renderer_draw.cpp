@@ -344,7 +344,7 @@ namespace vk::renderer::detail
                     continue;
                 }
             }
-            ids[slot] = vk::textures::Upload(fetch, nullptr);
+            ids[slot] = vk::textures::Upload(fetch, nullptr, kinds[slot]);
             if (g_dumpDraws) LogKitTexture(slot, fetch, "guest");
 #ifdef PES17_ANDROID
             // An 8-bit plane of a video frame (the CPU decodes the video into Y, Cb and Cr and a pixel shader

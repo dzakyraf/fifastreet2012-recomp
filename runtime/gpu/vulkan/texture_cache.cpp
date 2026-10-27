@@ -27,7 +27,7 @@
 bool     vk::textures::Initialise() { return false; }
 void     vk::textures::Shutdown() {}
 bool     vk::textures::Ready() { return false; }
-uint64_t vk::textures::Upload(const gpu::TextureFetch&, const char** error)
+uint64_t vk::textures::Upload(const gpu::TextureFetch&, const char** error, uint8_t)
 {
     if (error) *error = "built without Vulkan";
     return kNone;
@@ -1385,12 +1385,48 @@ namespace
         return StageInto(image, pData->bytes.data(), pData->bytes.size(), nullptr);
     }
 
+    // A bit of the fetch constant nothing reads (dword 4, the anisotropic walk flags), set on the copy
+    // the cache keeps, to tell a volume uploaded as its first slice from the same volume uploaded whole.
+    constexpr uint32_t kFirstSliceOnly = 1u << 10;
+
+    // A volume reduced to the first slice of each level, as the 2D image a 2D fetch of it samples.
+    void KeepFirstSlice(gpu::TextureData& data)
+    {
+        std::vector<uint8_t> bytes;
+        for (gpu::TextureData::Level& level : data.levels)
+        {
+            const size_t slice = size_t(level.blocksWide) * level.blocksHigh * data.bytesPerBlock;
+            if (!slice || slice > level.size || level.offset + slice > data.bytes.size())
+            {
+                data.ok = false;
+                data.error = "a volume level shorter than a slice";
+                return;
+            }
+            bytes.resize((bytes.size() + 15) & ~size_t(15));
+            const size_t at = bytes.size();
+            bytes.insert(bytes.end(), data.bytes.begin() + level.offset, data.bytes.begin() + level.offset + slice);
+            level.offset = at;
+            level.size = slice;
+            level.depth = level.layers = 1;
+        }
+        data.bytes = std::move(bytes);
+        data.layers = 1;
+        data.volume = false;
+    }
+
+    gpu::TextureData ReadGuest(const gpu::TextureFetch& fetch, const uint8_t* base, const uint8_t* mips)
+    {
+        gpu::TextureData data = gpu::ReadTexture(fetch, base, mips);
+        if (data.ok && data.volume && (fetch.d[4] & kFirstSliceOnly)) KeepFirstSlice(data);
+        return data;
+    }
+
     gpu::TextureData ReadAgain(const Image& image)
     {
         gpu::TextureFetch fetch;
         std::memcpy(fetch.d, image.fetchWords, sizeof fetch.d);
         Timed timed(g.timing, Timing::kRead);
-        return gpu::ReadTexture(fetch, HostAddress(image.address), HostAddress(image.mipAddress));
+        return ReadGuest(fetch, HostAddress(image.address), HostAddress(image.mipAddress));
     }
 
     // The fetch constant is unchanged when only the bytes are, so the cache would
@@ -1821,9 +1857,18 @@ namespace
     }
 }
 
-uint64_t vk::textures::Upload(const gpu::TextureFetch& fetch, const char** error)
+uint64_t vk::textures::Upload(const gpu::TextureFetch& requested, const char** error, uint8_t declaredKind)
 {
     if (!g.device && !Initialise()) { if (error) *error = "no device"; return kNone; }
+
+    gpu::TextureFetch firstSlice;
+    const bool flatten = declaredKind == 0 && requested.Dimension() == gpu::TextureDimension::D3;
+    if (flatten)
+    {
+        firstSlice = requested;
+        firstSlice.d[4] |= kFirstSliceOnly;
+    }
+    const gpu::TextureFetch& fetch = flatten ? firstSlice : requested;
 
     std::array<uint32_t, 6> key{};
     for (uint32_t i = 0; i < 6; i++) key[i] = fetch.d[i];
@@ -1879,7 +1924,7 @@ uint64_t vk::textures::Upload(const gpu::TextureFetch& fetch, const char** error
     g.timing.newTextures++;
     gpu::TextureData data = [&] {
         Timed timed(g.timing, Timing::kRead);
-        return gpu::ReadTexture(fetch, base, mips);
+        return ReadGuest(fetch, base, mips);
     }();
     if (!data.ok)
     {
@@ -2153,7 +2198,16 @@ void* vk::textures::DescriptorSet(const uint64_t ids[kSlots], const uint8_t* kin
         const uint8_t want = kinds ? kinds[i] : 0;
         const Image* image = Find(ids[i]);
         if (image && !image->view) image = nullptr;   // released
-        if (image && KindOf(*image) != want) { image = nullptr; g.kindMismatches++; }
+        if (image && KindOf(*image) != want)
+        {
+            static uint32_t told = 0;
+            if (told++ < 40)
+                LOGI("textures: slot %u bound as kind %u (%ux%u, %u layers, volume %d, xenos format %u) but the shader declares kind %u",
+                     i, KindOf(*image), image->width, image->height, image->layers, int(image->volume),
+                     image->xenosFormat, want);
+            image = nullptr;
+            g.kindMismatches++;
+        }
         if (!image) image = &FallbackOf(want);
         images[i].imageView = image->view;
         images[i].sampler = SamplerOf(ids[i], *image);
