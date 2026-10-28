@@ -919,7 +919,8 @@ void vk::renderer::Resolve(const gpu::RegisterFile& r)
     // On a desktop, every 8_8_8_8 resolve at least 320 wide: where a full-screen pass goes dark.
 #ifdef PES17_ANDROID
     if (g_dumpDraws && !exact && (destination == 0x07EB0000u || destination == 0x08370000u || destination == 0x075D0000u ||
-                         destination == 0x044D0000u || destination == 0x06D30000u || destination == 0x06C80000u) && into.format == VK_FORMAT_R8G8B8A8_UNORM)
+                         destination == 0x044D0000u || destination == 0x06D30000u || destination == 0x06C80000u ||
+                         destination == 0x05C20000u) && into.format == VK_FORMAT_R8G8B8A8_UNORM)
 #else
     if (g_dumpDraws && !exact && into.width >= 320 && into.format == VK_FORMAT_R8G8B8A8_UNORM)
 #endif
@@ -987,7 +988,23 @@ void vk::renderer::Resolve(const gpu::RegisterFile& r)
         if (use.frame + 1 == g.frames) use.consecutive++;
         use.frame = g.frames;
         uint32_t& times = use.times;
-        const bool everyFrame = !g_noWriteBackCap && (times >= 12 || use.consecutive >= kPerFrameAfter);
+        // files/writeback_always: hex destinations written back on every resolve whatever the cap says.
+        const bool always = std::find(g_writeBackAlways.begin(), g_writeBackAlways.end(), destination) !=
+                            g_writeBackAlways.end();
+        // FIFA Street resolves a 512x512 image to 05C20000 every frame and its CPU reads the bytes back
+        // for the courts' lighting (the PC port's "Full readback" covers it). Capped, the guest copy kept
+        // whatever the first dozen frames held and the Futsal Centre's floor was a third as bright as on
+        // the console. Written back every time: about 5 fps on the S20 FE.
+        const bool courtLighting = destination == 0x05C20000u && surfaceWidth == 512 && surfaceHeight == 512;
+        const bool everyFrame = !g_noWriteBackCap && !always && !courtLighting &&
+                                (times >= 12 || use.consecutive >= kPerFrameAfter);
+        static std::unordered_map<uint32_t, bool> toldStop;
+        if (everyFrame && !toldStop[destination])
+        {
+            toldStop[destination] = true;
+            LOGI("renderer: write-back stops for %08X (%ux%u at %u,%u) after %u resolves, %u frames in a row",
+                 destination, width, height, destX, destY, times, use.consecutive);
+        }
 
         times++;
         const uint32_t va = kernel::FromPhysical(destination);
@@ -1088,6 +1105,16 @@ void vk::renderer::Swap(uint32_t frontBuffer)
 #endif
             g_drawLo = lo; g_drawHi = hi;
             g_noWriteBackCap = access((DebugFilesDir() + "/no_writeback_cap").c_str(), F_OK) == 0;
+            {
+                std::vector<uint32_t> always;
+                if (std::FILE* f = std::fopen((DebugFilesDir() + "/writeback_always").c_str(), "r"))
+                {
+                    unsigned value = 0;
+                    while (std::fscanf(f, "%x", &value) == 1) always.push_back(value);
+                    std::fclose(f);
+                }
+                g_writeBackAlways = std::move(always);
+            }
             g_noVertexReuse = access((DebugFilesDir() + "/no_vertex_reuse").c_str(), F_OK) == 0;
             kernel::g_traceAll.store(access((DebugFilesDir() + "/trace_all").c_str(), F_OK) == 0, std::memory_order_relaxed);
         }

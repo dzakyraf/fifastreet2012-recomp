@@ -587,6 +587,7 @@ namespace vk::renderer::detail
     // Debug: only draws numbered lo..hi of each frame are drawn (files/draw_range holds "lo hi").
     extern uint32_t g_drawLo, g_drawHi, g_frameDraw;
     extern bool g_dumpHeaders;       // CAPTURE burst: one 'DUMP draw' line per draw, nothing else
+    extern std::vector<uint32_t> g_writeBackAlways;   // files/writeback_always
     extern bool g_noWriteBackCap;    // files/no_writeback_cap: debug A/B for the blinking ball
     extern bool g_noVertexReuse;     // files/no_vertex_reuse: debug A/B for the flicker
     // A signature of `bytes` of the guest memory at physical `address`, from 256 words spread

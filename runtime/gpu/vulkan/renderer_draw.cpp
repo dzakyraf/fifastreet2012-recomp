@@ -77,6 +77,8 @@ namespace vk::renderer::detail
         return sum | 1;
     }
     bool g_noWriteBackCap = false;
+    std::vector<uint32_t> g_writeBackAlways;
+
     bool g_dumpHeaders = false;
     uint32_t g_dumpIndex = 0;
 
