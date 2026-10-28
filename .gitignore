@@ -1,0 +1,19 @@
+# The game's own files: copyrighted, and huge.
+# gamefiles/ lives beside this folder (../gamefiles), outside the repository.
+fifa/
+
+# Generated (./recompile.sh) and built.
+ppc/
+build-*/
+third_party/XenonRecomp/build/
+android/app/build/
+android/.gradle/
+android/local.properties
+
+# Run output: logs, frame dumps, screenshots, traces, audio dumps.
+logs/
+run-mac/*
+!run-mac/*.sh
+!run-mac/*.py
+*.f32
+.DS_Store
